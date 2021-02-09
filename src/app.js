@@ -412,16 +412,10 @@ function embedNbApp () {
             .then (res => {
               socket.emit('left', {username: this.user.username, classId: oldActiveClass.id, sectionId: this.currentSectionId})
               this.currentSectionId = res.data
-              console.log("emit join")
               socket.emit('joined', {username: this.user.username, classId: newActiveClass.id, sectionId: this.currentSectionId})
             })
             this.getAllAnnotations(source, newActiveClass) // another axios call put into a helper method
-      
-           
-            console.log(oldActiveClass.id)
-            console.log(oldActiveClass)
 
-            
         }
 
       }
@@ -449,14 +443,13 @@ function embedNbApp () {
           }
         }
       })
-      socket.on('thread-typing', (id) => {
-        console.log(id)
-        this.threads.find(x => x.id === id).typing = true
+      socket.on('thread-typing', (data) => {
+        this.threads.find(x => x.id === data.threadId).usersTyping = data.usersTyping
       });
 
-      socket.on('thread-stop-typing', (id) => {
-        this.threads.find(x => x.id === id).typing = false
-      });
+      // socket.on('thread-stop-typing', (id) => {
+      //   this.threads.find(x => x.id === data.threadId).usersTyping = []
+      // });
 
       socket.on('new_reply', (data) => {
         console.log(data.id)
@@ -486,9 +479,6 @@ function embedNbApp () {
             }
           })   
         }
-        // console.log(thread)
-
-
       })
 
       // socket.on('new-draft', (data) => {

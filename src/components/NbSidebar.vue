@@ -298,8 +298,6 @@ export default {
         return
       }
 
-      let responseWanted = confirm("Do you want to request help from a classmate and get notifications about this thread?")
-
       let comment = new NbComment({
         id: null, // will be updated when submitAnnotation() is called
         range: this.draftRange, // null if this is reply
@@ -313,8 +311,8 @@ export default {
         people: data.mentions.users,
         visibility: data.visibility,
         anonymity: data.anonymity,
-        replyRequestedByMe: data.replyRequested || responseWanted,
-        replyRequestCount: (data.replyRequested || responseWanted) ? 1 : 0,
+        replyRequestedByMe: data.replyRequested,
+        replyRequestCount: data.replyRequested ? 1 : 0,
         upvotedByMe: false,
         upvoteCount: 0,
         seenByMe: true,

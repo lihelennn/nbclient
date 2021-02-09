@@ -5,7 +5,8 @@
         <nb-menu 
             :myClasses="myClasses" 
             :activeClass="activeClass"
-            @switch-class="onSwitchClass">
+            @switch-class="onSwitchClass"
+            @show-sync-features="onShowSyncFeatures">
         </nb-menu>
     </div>
     <filter-view
@@ -150,7 +151,7 @@ export default {
           anonymity: CommentAnonymity.IDENTIFIED,
           replyRequested: false
         },
-        isEmpty: true
+        isEmpty: true,
       }
     }
   },
@@ -195,6 +196,9 @@ export default {
   methods: {
     onSwitchClass: function (newClass) {
       this.$emit('switch-class', newClass)
+    },
+    onShowSyncFeatures: function (showSyncFeatures) {
+      this.$emit('show-sync-features', showSyncFeatures)
     },
     onToggleHighlights: function (show) {
       this.$emit('toggle-highlights', show)
@@ -294,6 +298,8 @@ export default {
         return
       }
 
+      let responseWanted = confirm("Do you want to request help from a classmate and get notifications about this thread?")
+
       let comment = new NbComment({
         id: null, // will be updated when submitAnnotation() is called
         range: this.draftRange, // null if this is reply
@@ -307,11 +313,11 @@ export default {
         people: data.mentions.users,
         visibility: data.visibility,
         anonymity: data.anonymity,
-        replyRequestedByMe: data.replyRequested,
-        replyRequestCount: data.replyRequested ? 1 : 0,
+        replyRequestedByMe: data.replyRequested || responseWanted,
+        replyRequestCount: (data.replyRequested || responseWanted) ? 1 : 0,
         upvotedByMe: false,
         upvoteCount: 0,
-        seenByMe: true
+        seenByMe: true,
       })
       let source = this.sourceUrl.length > 0 ? this.sourceUrl : window.location.href.split('?')[0]
       comment.submitAnnotation(this.activeClass.id, source)

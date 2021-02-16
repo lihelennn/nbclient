@@ -48,7 +48,9 @@
         :replyToComment="replyToComment"
         @edit-comment="onEditComment"
         @delete-comment="onDeleteComment"
-        @draft-reply="onDraftReply">
+        @draft-reply="onDraftReply"
+        @submit-small-comment="onSubmitSmallComment"
+    >
     </thread-view>
     <editor-view
         :author="user"
@@ -288,6 +290,32 @@ export default {
     onEditorEmpty: function (isEmpty) {
       this.editor.isEmpty = isEmpty
       this.$emit('editor-empty', isEmpty)
+    },
+    onSubmitSmallComment: function (data) {
+      console.log(data)
+      let comment = new NbComment({
+        id: null, // will be updated when submitAnnotation() is called
+        range: null, // null if this is reply
+        parent: data.replyToComment, // null if this is the head of thread
+        timestamp: null,
+        author: this.user.id,
+        authorName: `${this.user.name.first} ${this.user.name.last}`,
+        instructor: this.user.role === 'instructor',
+        html: data.html,
+        hashtags: [],
+        people: [],
+        visibility: CommentVisibility.EVERYONE,
+        anonymity: CommentAnonymity.IDENTIFIED,
+        replyRequestedByMe: false,
+        replyRequestCount: 0,
+        upvotedByMe: false,
+        upvoteCount: 0,
+        seenByMe: true,
+      })
+      comment.submitAnnotation(this.activeClass.id)
+      if (data.replyToComment) {
+        data.replyToComment.children.push(comment)
+      }
     },
     onSubmitComment: function (data) {
       this.editor.visible = false

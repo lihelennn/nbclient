@@ -13,6 +13,7 @@
         :replyToComment="replyToComment"
         @edit-comment="editComment"
         @delete-comment="deleteComment"
+        @submit-small-comment="submitSmallComment"
         @draft-reply="draftReply">
     </thread-comment>
   </div>
@@ -79,6 +80,9 @@ export default {
     },
     draftReply: function (comment) {
       this.$emit('draft-reply', comment)
+    },
+    submitSmallComment: function(data) {
+      this.$emit('submit-small-comment', data)
     }
   },
   components: {

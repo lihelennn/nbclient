@@ -770,3 +770,36 @@ nb-innotation {
 .typing {
   margin-left: auto;
 }
+
+#nb-app .smallCommentInput {
+  position: relative;
+}
+
+#nb-app .smallCommentText {
+  margin: 0px; 
+  padding: 0px; 
+  width: 100%; 
+  outline: none; 
+  border-radius: 5px; 
+}
+
+#nb-app .smallCommentButton {
+  position: absolute; 
+  top: 0; 
+  border-radius: 5px; 
+  right: 0px; 
+  z-index: 2; 
+  border: none; 
+  top: 2px; 
+  cursor: pointer; 
+  /* background-color: #ced2d5;  */
+  transform: translateX(2px);
+}
+
+#nb-app .smallCommentButton:hover {
+  background-color: #ced2d5; 
+
+}
+#nb-app .smallCommentHeader {
+  margin-bottom: 5px;
+}

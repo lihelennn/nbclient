@@ -437,12 +437,14 @@ function embedNbApp () {
         }
       })
       socket.on("new_thread", (data) => {
+        console.log(data)
         const source = window.location.origin + window.location.pathname
         let classId = data.classId
         console.log(this.activeClass)
         if (this.activeClass) { // originally had a check here to see if currently signed in, then don't retrieve again
           if (this.activeClass.id == classId && source === data.source_url) {
-            this.getAllAnnotations(source, this.activeClass) // get anontation from specific annotation id
+            // this.getAllAnnotations(source, this.activeClass) // get anontation from specific annotation id
+            this.getSingleThread(data.threadId)
             console.log("new thread: gathered new annotations")
           }
         }
@@ -456,8 +458,11 @@ function embedNbApp () {
       // });
 
       socket.on('new_reply', (data) => {
-        console.log(data.id)
-        let thread = this.threads.find(x => x.id === data.id)
+        console.log(data)
+        let thread = this.threads.find(x => x.id === data.headAnnotationId) // get the old thread
+        this.threads = this.threads.filter(x => x.id !== data.headAnnotationId) // filter out the thread
+        this.getSingleThread(data.threadId) // add the new thread in
+
         if (thread.hasMyReplyRequests() && this.showSyncFeatures) {
           this.$swal({
 
@@ -573,6 +578,27 @@ function embedNbApp () {
         }
         
        
+      },
+      getSingleThread: function (threadId, headAnnotationId) { // get single thread and add it to the list
+        const token = localStorage.getItem("nb.user");
+        const config = { headers: { Authorization: 'Bearer ' + token }, params: { is_instructor: this.user.role === 'instructor', thread_id:  threadId} }
+
+        axios.get('/api/annotations/specific_thread',  config)
+        .then(res => {
+          console.log(res.data)
+          let item = res.data.headAnnotation
+          try {
+            item.range = deserializeNbRange(item.range)
+          } catch (e) {
+            console.warn(`Could not deserialize range for ${item.id}`)
+          }
+          // Nb Comment
+          let comment = new NbComment(item, res.data.annotationsData)
+
+          this.threads.push(comment)
+            
+            
+        })
       },
       getAllAnnotations: function (source, newActiveClass) {
         this.stillGatheringThreads = true

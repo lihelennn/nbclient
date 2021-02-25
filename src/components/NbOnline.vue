@@ -22,7 +22,7 @@ export default {
   props: {
     onlineUsers: {
       type: Array,
-      default: () => [1, 2, 3]
+      default: () => []
     },
     showSyncFeatures: {
       type: Boolean,

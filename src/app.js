@@ -10,6 +10,8 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { fas } from '@fortawesome/free-solid-svg-icons'
 import { far } from '@fortawesome/free-regular-svg-icons'
+import { faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons'
+
 
 import { createNbRange, deserializeNbRange } from './models/nbrange.js'
 import NbComment from './models/nbcomment.js'
@@ -35,7 +37,8 @@ Vue.use(VueSweetalert2);
 
 
 Vue.component('font-awesome-icon', FontAwesomeIcon)
-library.add(fas, far)
+library.add(fas, far, faChevronDown, faChevronUp)
+
 
 axios.defaults.baseURL = 'https://nb2.csail.mit.edu/'
 // axios.defaults.baseURL = 'https://jumana-nb.csail.mit.edu/'
@@ -172,10 +175,12 @@ function embedNbApp () {
             :total-threads="totalThreads"
             :threads="filteredThreads"
             :thread-selected="threadSelected"
+            :threads-selected-in-panes="threadsSelectedInPanes"
             :threads-hovered="threadsHovered"
             :draft-range="draftRange"
             :show-highlights="showHighlights"
             :source-url="sourceURL"
+            threadSelectedPane="allThreads"
             @switch-class="onSwitchClass"
             @show-sync-features="onShowSyncFeatures"
             @toggle-highlights="onToggleHighlights"
@@ -195,6 +200,7 @@ function embedNbApp () {
             @min-reply-reqs="onMinReplyReqs"
             @min-upvotes="onMinUpvotes"
             @select-thread="onSelectThread"
+            @select-interesting-thread="onSelectInterestingThread"
             @hover-thread="onHoverThread"
             @unhover-thread="onUnhoverThread"
             @delete-thread="onDeleteThread"
@@ -246,7 +252,8 @@ function embedNbApp () {
       recentlyAddedThreads: [],
       showSyncFeatures: true,
       onlineUsers: [],
-      currentSectionId: ""
+      currentSectionId: "",
+      threadsSelectedInPanes: {"allThreads": null, "interestingThreads": null}
     },
     computed: {
       style: function () {
@@ -437,15 +444,17 @@ function embedNbApp () {
         }
       })
       socket.on("new_thread", (data) => {
-        console.log(data)
-        const source = window.location.origin + window.location.pathname
-        let classId = data.classId
-        console.log(this.activeClass)
-        if (this.activeClass) { // originally had a check here to see if currently signed in, then don't retrieve again
-          if (this.activeClass.id == classId && source === data.source_url) {
-            // this.getAllAnnotations(source, this.activeClass) // get anontation from specific annotation id
-            this.getSingleThread(data.threadId)
-            console.log("new thread: gathered new annotations")
+        let userIdsSet = new Set(data.userIds)
+        if (data.userId !== this.user.id && userIdsSet.has(this.user.id)) { // find if we are one of the target audiences w/ visibility + section permissions for this new_thread if current user, we already added new thread to their list
+          console.log(data)
+          const source = window.location.origin + window.location.pathname
+          let classId = data.classId
+          if (this.activeClass) { // originally had a check here to see if currently signed in, then don't retrieve again
+            if (this.activeClass.id == classId && source === data.source_url) {
+              // this.getAllAnnotations(source, this.activeClass) // get anontation from specific annotation id
+              this.getSingleThread(data.threadId)
+              console.log("new thread: gathered new annotations")
+            }
           }
         }
       })
@@ -453,40 +462,38 @@ function embedNbApp () {
         this.threads.find(x => x.id === data.threadId).usersTyping = data.usersTyping
       });
 
-      // socket.on('thread-stop-typing', (id) => {
-      //   this.threads.find(x => x.id === data.threadId).usersTyping = []
-      // });
-
       socket.on('new_reply', (data) => {
-        console.log(data)
-        let thread = this.threads.find(x => x.id === data.headAnnotationId) // get the old thread
-        this.threads = this.threads.filter(x => x.id !== data.headAnnotationId) // filter out the thread
-        this.getSingleThread(data.threadId) // add the new thread in
+        if (data.username !== this.user.username) { // if current user, we already added new reply to their list
+          console.log(data)
+          let thread = this.threads.find(x => x.id === data.headAnnotationId) // get the old thread
+          this.threads = this.threads.filter(x => x.id !== data.headAnnotationId) // filter out the thread
+          this.getSingleThread(data.threadId) // add the new thread in
 
-        if (thread.hasMyReplyRequests() && this.showSyncFeatures) {
-          this.$swal({
+          if (thread.hasMyReplyRequests() && this.showSyncFeatures) {
+            this.$swal({
 
-            title: '',
+              title: '',
 
-            text: "A recent comment was added to a thread you requested a reply from. Do you want to open it?",
+              text: "A recent comment was added to a thread you requested a reply from. Do you want to open it?",
 
-            type: 'success',
+              type: 'success',
 
-            showCancelButton: true,
+              showCancelButton: true,
 
-            confirmButtonColor: '#3085d6',
+              confirmButtonColor: '#3085d6',
 
-            cancelButtonColor: '#d33',
+              cancelButtonColor: '#d33',
 
-            confirmButtonText: 'Yes, bring me there!',
-            toast: true,
-            position: 'top-start'
+              confirmButtonText: 'Yes, bring me there!',
+              toast: true,
+              position: 'top-start'
 
-          }).then((result) => {
-            if (result.value) {
-              this.onSelectThread(thread)
-            }
-          })   
+            }).then((result) => {
+              if (result.value) {
+                this.onSelectThread(thread)
+              }
+            })   
+          }
         }
       })
 
@@ -579,10 +586,10 @@ function embedNbApp () {
         
        
       },
-      getSingleThread: function (threadId, headAnnotationId) { // get single thread and add it to the list
+      getSingleThread: function (threadId) { // get single thread and add it to the list
         const token = localStorage.getItem("nb.user");
         const config = { headers: { Authorization: 'Bearer ' + token }, params: { is_instructor: this.user.role === 'instructor', thread_id:  threadId} }
-
+        console.log(this.user.role ==='instructor')
         axios.get('/api/annotations/specific_thread',  config)
         .then(res => {
           console.log(res.data)
@@ -604,7 +611,6 @@ function embedNbApp () {
         this.stillGatheringThreads = true
         const token = localStorage.getItem("nb.user");
         const config = { headers: { Authorization: 'Bearer ' + token }, params: { url: source, class: newActiveClass.id } }
-
         axios.get('/api/annotations/new_annotation',  config)
         .then(res => {
             this.threads = []
@@ -617,7 +623,6 @@ function embedNbApp () {
               }
               // Nb Comment
               let comment = new NbComment(item, res.data.annotationsData)
-
               this.threads.push(comment)
             }
             this.stillGatheringThreads = false
@@ -827,6 +832,12 @@ function embedNbApp () {
       },
       onSelectThread: function (thread) {
         this.threadSelected = thread
+        this.threadsSelectedInPanes["allThreads"] = thread
+        thread.markSeenAll()
+      },
+      onSelectInterestingThread: function (thread) {
+        this.threadSelected = thread
+        this.threadsSelectedInPanes["interestingThreads"] = thread
         thread.markSeenAll()
       },
       onUnselectThread: function (thread) {
@@ -846,6 +857,7 @@ function embedNbApp () {
       },
       onNewRecentThread: function (thread) {
         console.log(thread)
+        thread.isInterestingThread = true
         if (thread.id) { // only if this has an id (we queried it from the server, should we show the notification)
           console.log(window.location.href + `#nb-comment-${thread.id}`)
           
@@ -936,6 +948,7 @@ function embedNbApp () {
             minUpvotes: 0
           }
           this.showHighlights = true
+          this.onUserLeft()
       }
     },
     components: {
@@ -943,7 +956,7 @@ function embedNbApp () {
       NbOnline,
       NbSidebar,
       NbLogin,
-      NbNoAccess
+      NbNoAccess,
     }
   })
 

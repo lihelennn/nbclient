@@ -32,12 +32,26 @@
     <list-view
         :threads="threads"
         :total-count="totalThreads"
-        :thread-selected="threadSelected"
+        :thread-selected="threadsSelectedInPanes['allThreads']"
         :threads-hovered="threadsHovered"
         :show-highlights="showHighlights"
         :still-gathering-threads="stillGatheringThreads"
+        type="allThreads"
         @toggle-highlights="onToggleHighlights"
         @select-thread="onSelectThread"
+        @hover-thread="onHoverThread"
+        @unhover-thread="onUnhoverThread">
+    </list-view>
+    <list-view
+        :threads="interestingThreads"
+        :total-count="interestingThreads.length"
+        :thread-selected="threadsSelectedInPanes['interestingThreads']"
+        :threads-hovered="threadsHovered"
+        :show-highlights="showHighlights"
+        :still-gathering-threads="stillGatheringThreads"
+        type="interestingThreads"
+        @toggle-highlights="onToggleHighlights"
+        @select-interesting-thread="onSelectInterestingThread"
         @hover-thread="onHoverThread"
         @unhover-thread="onUnhoverThread">
     </list-view>
@@ -137,6 +151,10 @@ export default {
     sourceUrl: {
       type: String,
       default: ""
+    },
+    threadsSelectedInPanes: {
+      type: Object,
+      default: () => {}
     }
   },
   data () {
@@ -167,6 +185,9 @@ export default {
     },
     sortedHashtags: function () {
       return Object.values(this.hashtags).sort(compare('value'))
+    },
+    interestingThreads: function() { 
+      return this.threads.filter(thread => thread.isInterestingThread)
     }
   },
   watch: {
@@ -249,6 +270,9 @@ export default {
     },
     onMinUpvotes: function (min) {
       this.$emit('min-upvotes', min)
+    },
+    onSelectInterestingThread: function (thread) {
+      this.$emit('select-interesting-thread', thread)
     },
     onSelectThread: function (thread) {
       this.$emit('select-thread', thread)

@@ -190,6 +190,11 @@ class NbComment {
     this.setText()
     
     this.usersTyping = []
+
+    /**
+     * See if this thread is intersting for the user to explore (pinned by user, posted nearby)
+     */
+    this.isInterestingThread = this.isInteresting()
   }
 
   /**
@@ -223,8 +228,8 @@ class NbComment {
     const token = localStorage.getItem("nb.user");
     const headers = { headers: { Authorization: 'Bearer ' + token }}
     if (!this.parent) {
-      return axios.post('/api/annotations/annotation', {
-        url: sourceUrl,
+      return axios.post('/api/annotations/new_annotation', {
+        url: window.location.href.split('?')[0],
         class: classId,
         content: this.html,
         range: this.range.serialize(),
@@ -526,6 +531,19 @@ class NbComment {
     return false
   }
 
+  /** 
+   * Checks to see if this thread if interesting (bookmarked, pinned, reply requested, posted recently nearby)
+   */
+  isInteresting () {
+    if (this.replyRequestedByMe || this.bookmarked) { return true }
+    for (let child of this.children) {
+      if (child.isInteresting()) {
+        return true
+      }
+    }
+    return false
+  }
+
   /**
    * Mark this comment and all its descendants as seen by the current user.
    */
@@ -570,10 +588,12 @@ class NbComment {
       this.replyRequestCount += 1
       this.replyRequestedByMe = true
     }
+    this.isInterestingThread = this.isInteresting()
     if (this.id) {
       const token = localStorage.getItem("nb.user");
       const headers = { headers: { Authorization: 'Bearer ' + token }}
       axios.post(`/api/annotations/replyRequest/${this.id}`, { replyRequest: this.replyRequestedByMe }, headers)
+      this.isInterestingThread = this.isInteresting()
     }
   }
 
@@ -582,6 +602,7 @@ class NbComment {
    */
   toggleBookmark () {
     this.bookmarked = !this.bookmarked
+    this.isInterestingThread = this.isInteresting()
     if (this.id) {
       const token = localStorage.getItem("nb.user");
       const headers = { headers: { Authorization: 'Bearer ' + token }}

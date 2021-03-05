@@ -36,25 +36,23 @@
         :threads-hovered="threadsHovered"
         :show-highlights="showHighlights"
         :still-gathering-threads="stillGatheringThreads"
-        type="allThreads"
         @toggle-highlights="onToggleHighlights"
         @select-thread="onSelectThread"
         @hover-thread="onHoverThread"
         @unhover-thread="onUnhoverThread">
     </list-view>
-    <list-view
-        :threads="interestingThreads"
-        :total-count="interestingThreads.length"
+    <notification-view
+        :notifications="notificationThreads"
+        :total-count="notificationThreads.length"
         :thread-selected="threadsSelectedInPanes['interestingThreads']"
         :threads-hovered="threadsHovered"
         :show-highlights="showHighlights"
         :still-gathering-threads="stillGatheringThreads"
-        type="interestingThreads"
         @toggle-highlights="onToggleHighlights"
         @select-interesting-thread="onSelectInterestingThread"
         @hover-thread="onHoverThread"
         @unhover-thread="onUnhoverThread">
-    </list-view>
+    </notification-view>
     <thread-view
         v-if="threadSelected"
         :thread="threadSelected"
@@ -98,6 +96,7 @@ import NbComment from '../models/nbcomment.js'
 import NavBar from './NavBar.vue'
 import FilterView from './filters/FilterView.vue'
 import ListView from './list/ListView.vue'
+import NotificationView from './list/NotificationView.vue'
 import ThreadView from './thread/ThreadView.vue'
 import EditorView from './editor/EditorView.vue'
 import NbMenu from './NbMenu.vue'
@@ -155,6 +154,10 @@ export default {
     threadsSelectedInPanes: {
       type: Object,
       default: () => {}
+    },
+    notificationThreads: {
+      type: Array,
+      default: () => []
     }
   },
   data () {
@@ -186,9 +189,6 @@ export default {
     sortedHashtags: function () {
       return Object.values(this.hashtags).sort(compare('value'))
     },
-    interestingThreads: function() { 
-      return this.threads.filter(thread => thread.isInterestingThread)
-    }
   },
   watch: {
     draftRange: function (val, oldVal) {
@@ -278,9 +278,12 @@ export default {
       this.$emit('select-thread', thread)
     },
     onHoverThread: function (thread) {
+      console.log("hovering")
+      console.log(thread)
       this.$emit('hover-thread', thread)
     },
     onUnhoverThread: function (thread) {
+      console.log("unhovering")
       this.$emit('unhover-thread', thread)
     },
     onEditComment: function (comment) {
@@ -425,6 +428,7 @@ export default {
     EditorView,
     NbMenu,
     NbChat,
+    NotificationView,
   }
 }
 </script>

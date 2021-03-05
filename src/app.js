@@ -15,6 +15,7 @@ import { faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons'
 
 import { createNbRange, deserializeNbRange } from './models/nbrange.js'
 import NbComment from './models/nbcomment.js'
+import NbNotification from './models/nbnotification.js'
 import { isNodePartOf } from './utils/dom-util.js'
 
 import NbHighlights from './components/highlights/NbHighlights.vue'
@@ -176,6 +177,7 @@ function embedNbApp () {
             :threads="filteredThreads"
             :thread-selected="threadSelected"
             :threads-selected-in-panes="threadsSelectedInPanes"
+            :notification-threads="notificationThreads"
             :threads-hovered="threadsHovered"
             :draft-range="draftRange"
             :show-highlights="showHighlights"
@@ -253,7 +255,8 @@ function embedNbApp () {
       showSyncFeatures: true,
       onlineUsers: [],
       currentSectionId: "",
-      threadsSelectedInPanes: {"allThreads": null, "interestingThreads": null}
+      threadsSelectedInPanes: {"allThreads": null, "interestingThreads": null},
+      notificationThreads: []
     },
     computed: {
       style: function () {
@@ -463,7 +466,7 @@ function embedNbApp () {
       });
 
       socket.on('new_reply', (data) => {
-        if (data.username !== this.user.username) { // if current user, we already added new reply to their list
+        if (data.username === this.user.username) { // if current user, we already added new reply to their list
           console.log(data)
           let thread = this.threads.find(x => x.id === data.headAnnotationId) // get the old thread
           this.threads = this.threads.filter(x => x.id !== data.headAnnotationId) // filter out the thread
@@ -603,8 +606,10 @@ function embedNbApp () {
           let comment = new NbComment(item, res.data.annotationsData)
 
           this.threads.push(comment)
-            
-            
+          if (comment.hasMyReplyRequests() && this.showSyncFeatures) {
+            this.notificationThreads.push(new NbNotification("A response to a reply request from you has been posted", comment))
+          }
+
         })
       },
       getAllAnnotations: function (source, newActiveClass) {
@@ -857,44 +862,10 @@ function embedNbApp () {
       },
       onNewRecentThread: function (thread) {
         console.log(thread)
-        thread.isInterestingThread = true
+        this.notificationThreads.push(new NbNotification("A recent thread near you has been posted", thread))
         if (thread.id) { // only if this has an id (we queried it from the server, should we show the notification)
           console.log(window.location.href + `#nb-comment-${thread.id}`)
-          
-          // this.$swal({
-
-          //   title: '',
-
-          //   text: "A recent comment was added nearby. Do you want to open it?",
-
-          //   type: 'success',
-
-          //   showCancelButton: true,
-
-          //   confirmButtonColor: '#3085d6',
-
-          //   cancelButtonColor: '#d33',
-
-          //   confirmButtonText: 'Yes, bring me there!',
-          //   toast: true,
-          //   position: 'top-start'
-
-          // }).then((result) => {
-          //   if (result.value) {
-          //     this.onSelectThread(thread)
-          //   }
-          // })
-          // Vue.notify({
-          //   group: 'recentlyAddedThreads',
-          //   title: 'A recent comment was added nearby',
-          //   // text: `<button onclick="${this.onSelectThread(thread)}">BUTTON</button>` + window.location.href + `#nb-comment-${thread.id}`,
-          //   type: 'success',
-          //   text: `<a href="${window.location.href}#nb-comment-${thread.id}" target="_blank">Click here to view</a>`,
-
-          //   duration: 8000,
-          // })
         }
-        // recentlyAddedThreads.push(thread)
       },
       onToggleHighlights: function (show) {
         this.showHighlights = show

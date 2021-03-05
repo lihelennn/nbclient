@@ -3,9 +3,9 @@
       class="list-row"
       :style="rowStyle"
       :key="thread.id"
-      @mouseenter="$emit('hover-thread', thread)"
-      @mouseleave="$emit('unhover-thread', thread)"
-      @click="$emit('select-thread', thread)">
+      @mouseenter="onHoverNotification"
+      @mouseleave="onUnhoverNotification"
+      @click="onClickNotification">
     <div class="flags">
       <div class="icon-wrapper counter" :style="counterStyle">
         {{ thread.countAllReplies() + 1 }}
@@ -22,18 +22,8 @@
       <div v-else class="placeholder question"></div>
     </div>
     <span :style="textStyle">
-      {{ thread.text }}
+      {{ title }}
     </span>
-    <div class="typing">
-      <span>
-        <avatar
-        v-for="user in thread.usersTyping" 
-        :key="user"
-        :fullname="user"
-        :size="18"
-        />
-      </span>
-    </div>
   </div>
 </template>
 
@@ -64,16 +54,19 @@
  *   hovering over this row
  */
 
-import Avatar from 'vue-avatar-component'
-
 export default {
-  name: 'list-view',
+  name: 'notification-row',
   props: {
-    thread: Object,
     threadSelected: Object,
     threadsHovered: {
       type: Array,
       default: () => []
+    },
+    notification: Object
+  },
+  data () {
+    return {
+      thread: this.notification.comment,
     }
   },
   computed: {
@@ -99,10 +92,20 @@ export default {
       return null
     },
     textStyle: function () {
-      if (this.thread.isUnseen()) {
+      if (this.unseen) {
         return 'font-weight: bold;'
       }
       return null
+    },
+    title: function () {
+        if (this.notification.title.length > 0) {
+            return this.notification.title
+        } else {
+            return "Notification"
+        }
+    },
+    unseen: function() {
+        return this.notification.unseen
     }
   },
   watch: {
@@ -127,10 +130,23 @@ export default {
       }
     },
   },
+  methods: {
+    onClickNotification: function () {
+          this.notification.setIsUnseen(false)
+          this.$emit('select-interesting-thread', this.thread)
+    },
+    onHoverNotification: function () {
+        console.log(this.notification)
+        console.log(this.thread)
+        this.$emit('hover-thread', this.thread)   
+    },
+    onUnhoverNotification: function () {
+        console.log(this.notification)
+        console.log(this.thread)
+        this.$emit('unhover-thread', this.thread)
+    }
+  },
   components: {
-    Avatar
   }
 }
 </script>
-
-

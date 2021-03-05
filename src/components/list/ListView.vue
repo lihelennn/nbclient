@@ -114,15 +114,11 @@ export default {
       type: Boolean,
       default: true
     },
-    type: {
-      type: String,
-      default: "allThreads"
-    },
   },
   data () {
     return {
-      isCollapsed: true,
-      sortBy: this.type === "interestingThreads" ? "unseen" : "position",
+      isCollapsed: false,
+      sortBy: "position",
       sortByOptions: [
         { text: 'Default', value: 'position' },
         { text: 'Most Recent', value: 'recent' },
@@ -160,18 +156,10 @@ export default {
       }
     },
     tooltipType: function () {
-      if (this.type === "interestingThreads") {
-        return 'See some help-need threads, pins, reply requests, and threads happening nearby you.'
-      } else {
-        return 'See all your threads after applying some filters.'
-      }
+      return 'See all your threads after applying some filters.'
     },
     title: function () {
-      if (this.type === "interestingThreads") {
-        return 'Explore Threads'
-      } else {
-        return 'All Threads'
-      }
+      return 'All Threads'
     },
   },
   methods: {
@@ -179,11 +167,7 @@ export default {
       this.$emit('toggle-highlights', !this.showHighlights)
     },
     onSelectThread: function (thread) {
-      if (this.type === "interestingThreads") {
-        this.$emit('select-interesting-thread', thread)
-      } else { 
-        this.$emit('select-thread', thread)
-      }
+      this.$emit('select-thread', thread)
     }
   },
   components: {

@@ -383,10 +383,18 @@
   overflow-y: scroll;
 }
 #nb-app .nb-sidebar .thread-view .thread-header {
+  display: flex;
   padding: 0 0 10px 0;
   color: #444;
   border-bottom: 1px solid #666;
 }
+
+#nb-app .nb-sidebar .thread-view .thread-header-arrows {
+  margin-left: auto;
+  display: flex;
+  cursor: pointer;
+}
+
 #nb-app .nb-sidebar .thread-view .thread-header .icon {
   color: #444;
 }

@@ -1,12 +1,32 @@
 <template>
   <div class="thread-view">
     <div class="thread-header">
-      {{ numComments }}
-      &nbsp;·&nbsp;
-      <font-awesome-icon icon="question">
-      </font-awesome-icon>
-      {{ thread.countAllReplyReqs() }}
+      <div>
+        {{ numComments }}
+        &nbsp;·&nbsp;
+        <font-awesome-icon icon="question">
+        </font-awesome-icon>
+        {{ thread.countAllReplyReqs() }}
+      </div>
+      <div class="thread-header-arrows">
+        <span
+          v-tooltip="'Show previous thread in document'"
+          @click="onPrevComment"
+          >
+          <font-awesome-icon icon="chevron-circle-left"></font-awesome-icon>
+          Prev
+        </span>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <span
+          v-tooltip="'Show next thread in document'"
+          @click="onNextComment"
+          >
+          Next
+          <font-awesome-icon icon="chevron-circle-right"></font-awesome-icon>
+        </span>
+      </div>
     </div>
+
     <thread-comment
         :comment="thread"
         :me="me"
@@ -83,6 +103,12 @@ export default {
     },
     submitSmallComment: function(data) {
       this.$emit('submit-small-comment', data)
+    },
+    onPrevComment: function () {
+      this.$emit('prev-comment')
+    },
+    onNextComment: function () {
+      this.$emit('next-comment')
     }
   },
   components: {

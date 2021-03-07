@@ -17,6 +17,7 @@ import { createNbRange, deserializeNbRange } from './models/nbrange.js'
 import NbComment from './models/nbcomment.js'
 import NbNotification from './models/nbnotification.js'
 import { isNodePartOf } from './utils/dom-util.js'
+import { compareDomPosition } from './utils/compare-util.js'
 
 import NbHighlights from './components/highlights/NbHighlights.vue'
 import NbOnline from './components//NbOnline.vue'
@@ -211,6 +212,8 @@ function embedNbApp () {
             @editor-empty="onEditorEmpty"
             @thread-typing="onThreadTyping"
             @thread-stop-typing="onThreadStopTyping"
+            @prev-comment="onPrevComment"
+            @next-comment="onNextComment"
             @logout="onLogout">
           </nb-sidebar>
         </div>
@@ -364,7 +367,7 @@ function embedNbApp () {
         if (minUpvotes > 0) {
           items = items.filter(item => item.countAllUpvotes() >= minUpvotes)
         }
-        return items
+        return items.concat().sort(compareDomPosition) // sort now so we can go prev and next comment
       }
     },
     watch: {
@@ -887,6 +890,20 @@ function embedNbApp () {
       onThreadStopTyping: function(threadId) {
         if (threadId) {
           socket.emit('thread-stop-typing', {threadId: threadId, username: this.user.username})
+        }
+      },
+      onPrevComment: function () {
+        let idx = this.filteredThreads.findIndex(x => x.id === this.threadSelected.id)
+        let prevIdx = idx-1
+        if (prevIdx >= 0 && prevIdx < this.filteredThreads.length) {
+          this.onSelectThread(this.filteredThreads[prevIdx])
+        }
+      },
+      onNextComment: function () {
+        let idx = this.filteredThreads.findIndex(x => x.id === this.threadSelected.id)
+        let nextIdx = idx+1
+        if (nextIdx >= 0 && nextIdx < this.filteredThreads.length) {
+          this.onSelectThread(this.filteredThreads[nextIdx])
         }
       },
       onLogout: function () {

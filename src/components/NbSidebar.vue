@@ -62,6 +62,8 @@
         @delete-comment="onDeleteComment"
         @draft-reply="onDraftReply"
         @submit-small-comment="onSubmitSmallComment"
+        @prev-comment="onPrevComment"
+        @next-comment="onNextComment"
     >
     </thread-view>
     <editor-view
@@ -418,6 +420,12 @@ export default {
       if (this.threadSelected) {
         this.$emit('thread-stop-typing', this.threadSelected.id)
       }
+    },
+    onPrevComment: function () {
+      this.$emit('prev-comment')
+    },
+    onNextComment: function () {
+      this.$emit('next-comment')
     }
   },
   components: {

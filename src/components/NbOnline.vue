@@ -2,10 +2,10 @@
   <div class="nb-online">
     <div v-if="showSyncFeatures">
       <h3>Classmates & Instructors Currently Online: {{numOnlineUsers}}</h3>
-      <avatar 
+      <!-- <avatar 
         v-for="user in onlineUsers"
         :key="user"
-        :fullname="user"/>
+        :fullname="user"/> -->
     </div>
   </div>
 </template>

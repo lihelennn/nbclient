@@ -14,6 +14,9 @@
         <span class="count">
           {{ totalLabel }}
         </span>
+        <span class="configure">
+          <a href="https://localhost:8080">Configure</a>
+        </span>
       </div>
       <div class="list-table">
         <notification-row

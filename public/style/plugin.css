@@ -834,3 +834,8 @@ nb-innotation {
 #nb-app .collapse-button {
   margin-left: auto
 }
+
+#nb-app .nb-sidebar .list-view .list-header .configure {
+  margin-left: auto;
+  font-size: 13px;
+}

@@ -457,7 +457,6 @@ function embedNbApp () {
           let classId = data.classId
           if (this.activeClass) { // originally had a check here to see if currently signed in, then don't retrieve again
             if (this.activeClass.id == classId && source === data.source_url) {
-              // this.getAllAnnotations(source, this.activeClass) // get anontation from specific annotation id
               this.getSingleThread(data.threadId)
               console.log("new thread: gathered new annotations")
             }
@@ -469,7 +468,7 @@ function embedNbApp () {
       });
 
       socket.on('new_reply', (data) => {
-        if (data.username === this.user.username) { // if current user, we already added new reply to their list
+        if (data.username !== this.user.username) { // if current user, we already added new reply to their list
           console.log(data)
           let thread = this.threads.find(x => x.id === data.headAnnotationId) // get the old thread
           this.threads = this.threads.filter(x => x.id !== data.headAnnotationId) // filter out the thread
@@ -607,9 +606,11 @@ function embedNbApp () {
           }
           // Nb Comment
           let comment = new NbComment(item, res.data.annotationsData)
-
+          
           this.threads.push(comment)
-          if (comment.hasMyReplyRequests() && this.showSyncFeatures) {
+          if (comment.instructor) {
+            this.notificationThreads.push(new NbNotification("An instructor posted a reply or new thread", comment))
+          } else if (comment.hasMyReplyRequests() && this.showSyncFeatures) {
             this.notificationThreads.push(new NbNotification("A response to a reply request from you has been posted", comment))
           }
 
@@ -864,8 +865,8 @@ function embedNbApp () {
         if (idx >= 0) this.threadsHovered.splice(idx, 1)
       },
       onNewRecentThread: function (thread) {
-        console.log(thread)
-        this.notificationThreads.push(new NbNotification("A recent thread near you has been posted", thread))
+        // console.log(thread)
+        // this.notificationThreads.push(new NbNotification("A recent thread near you has been posted", thread))
         if (thread.id) { // only if this has an id (we queried it from the server, should we show the notification)
           console.log(window.location.href + `#nb-comment-${thread.id}`)
         }

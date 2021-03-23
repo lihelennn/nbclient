@@ -4,15 +4,6 @@
         <select v-model="activeClass">
             <option v-for="(item, index) in myClasses" :id="item.id" :value="item">{{item.class_name}}</option>
         </select>
-
-        <label>Show Sync Features</label>
-        <input type="checkbox"
-            v-model="showSyncFeatures"
-            :true-value="true"
-            :false-value="false"
-            @change="onShowSyncFeaturesChange($event)"
-        >
-
     </div>
 </template>
 
@@ -42,10 +33,5 @@ export default {
     created: function () {
         this.activeClass = this.myClasses[0]
     },
-    methods: {
-        onShowSyncFeaturesChange: function(event) {
-            this.$emit('show-sync-features', this.showSyncFeatures)
-        }
-    }
 }
 </script>

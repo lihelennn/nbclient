@@ -20,7 +20,6 @@ import { isNodePartOf } from './utils/dom-util.js'
 import { compareDomPosition } from './utils/compare-util.js'
 
 import NbHighlights from './components/highlights/NbHighlights.vue'
-import NbOnline from './components//NbOnline.vue'
 import NbSidebar from './components/NbSidebar.vue'
 import NbNoAccess from './components/NbNoAccess.vue'
 import NbLogin from './components/NbLogin.vue'
@@ -30,7 +29,7 @@ import VueJwtDecode from "vue-jwt-decode";
 
 import io from "socket.io-client";
 const socket = io("https://127.0.0.1:3000", {reconnect: true});
-
+// const socket = io("https://helen-nb.csail.mit.edu", {reconnect: true});
 
 Vue.use(VueQuill)
 Vue.use(VTooltip)
@@ -147,10 +146,6 @@ function embedNbApp () {
         </div>
         <div v-else>
           <notifications position="top left" group="recentlyAddedThreads" />
-          <nb-online
-            :online-users="onlineUsers"
-            :show-sync-features="showSyncFeatures"> 
-          </nb-online>
           <nb-highlights
             :key="resizeKey"
             :threads="filteredThreads"
@@ -170,6 +165,7 @@ function embedNbApp () {
           <nb-sidebar
             :user="user"
             :users="users"
+            :online-users="onlineUsers"
             :myClasses="myClasses"
             :activeClass="activeClass"
             :hashtags="hashtags"
@@ -177,6 +173,7 @@ function embedNbApp () {
             :total-threads="totalThreads"
             :threads="filteredThreads"
             :thread-selected="threadSelected"
+            :notification-selected="notificationSelected"
             :threads-selected-in-panes="threadsSelectedInPanes"
             :notification-threads="notificationThreads"
             :threads-hovered="threadsHovered"
@@ -184,6 +181,7 @@ function embedNbApp () {
             :show-highlights="showHighlights"
             :source-url="sourceURL"
             threadSelectedPane="allThreads"
+            :show-sync-features="showSyncFeatures"
             @switch-class="onSwitchClass"
             @show-sync-features="onShowSyncFeatures"
             @toggle-highlights="onToggleHighlights"
@@ -203,7 +201,7 @@ function embedNbApp () {
             @min-reply-reqs="onMinReplyReqs"
             @min-upvotes="onMinUpvotes"
             @select-thread="onSelectThread"
-            @select-interesting-thread="onSelectInterestingThread"
+            @select-notification="onSelectNotification"
             @hover-thread="onHoverThread"
             @unhover-thread="onUnhoverThread"
             @delete-thread="onDeleteThread"
@@ -228,6 +226,7 @@ function embedNbApp () {
       threads: [],
       threadSelected: null,
       threadsHovered: [], // in case of hover on overlapping highlights
+      notificationSelected: null,
       stillGatheringThreads: true,
       draftRange: null,
       isEditorEmpty: true,
@@ -258,8 +257,9 @@ function embedNbApp () {
       showSyncFeatures: true,
       onlineUsers: [],
       currentSectionId: "",
-      threadsSelectedInPanes: {"allThreads": null, "interestingThreads": null},
-      notificationThreads: []
+      threadsSelectedInPanes: {"allThreads": null, "notifications": null},
+      notificationThreads: [],
+      swalClicked: false
     },
     computed: {
       style: function () {
@@ -450,54 +450,41 @@ function embedNbApp () {
         }
       })
       socket.on("new_thread", (data) => {
+        console.log(this.users[data.authorId])
+        console.log(this.users[data.authorId].role==="instructor")
         let userIdsSet = new Set(data.userIds)
-        if (data.userId !== this.user.id && userIdsSet.has(this.user.id)) { // find if we are one of the target audiences w/ visibility + section permissions for this new_thread if current user, we already added new thread to their list
-          console.log(data)
+        console.log(data)
+        if (data.authorId !== this.user.id && userIdsSet.has(this.user.id)) { // find if we are one of the target audiences w/ visibility + section permissions for this new_thread if current user, we already added new thread to their list
           const source = window.location.origin + window.location.pathname
           let classId = data.classId
           if (this.activeClass) { // originally had a check here to see if currently signed in, then don't retrieve again
-            if (this.activeClass.id == classId && source === data.source_url) {
-              this.getSingleThread(data.threadId)
+            if (this.activeClass.id == classId && source === data.sourceUrl) {
+              this.getSingleThread(data.sourceUrl, classId, data.threadId, data.authorId) // data contains info about the thread and if the new thread as posted by an instructor
               console.log("new thread: gathered new annotations")
             }
           }
         }
       })
       socket.on('thread-typing', (data) => {
-        this.threads.find(x => x.id === data.threadId).usersTyping = data.usersTyping
+        let thread = this.threads.find(x => x.id === data.threadId)
+        if (thread !== undefined) {
+          thread.usersTyping = data.usersTyping
+        }
       });
 
       socket.on('new_reply', (data) => {
-        if (data.username !== this.user.username) { // if current user, we already added new reply to their list
-          console.log(data)
-          let thread = this.threads.find(x => x.id === data.headAnnotationId) // get the old thread
-          this.threads = this.threads.filter(x => x.id !== data.headAnnotationId) // filter out the thread
-          this.getSingleThread(data.threadId) // add the new thread in
-
-          if (thread.hasMyReplyRequests() && this.showSyncFeatures) {
-            this.$swal({
-
-              title: '',
-
-              text: "A recent comment was added to a thread you requested a reply from. Do you want to open it?",
-
-              type: 'success',
-
-              showCancelButton: true,
-
-              confirmButtonColor: '#3085d6',
-
-              cancelButtonColor: '#d33',
-
-              confirmButtonText: 'Yes, bring me there!',
-              toast: true,
-              position: 'top-start'
-
-            }).then((result) => {
-              if (result.value) {
-                this.onSelectThread(thread)
-              }
-            })   
+        console.log(this.users[data.authorId])
+        console.log(this.users[data.authorId].role==="instructor")
+        console.log(data)
+        if (data.authorId !== this.user.id) { // if current user, we already added new reply to their list
+          const source = window.location.origin + window.location.pathname
+          let classId = data.classId
+          if (this.activeClass) { // originally had a check here to see if currently signed in, then don't retrieve again
+            if (this.activeClass.id == classId && source === data.sourceUrl) {
+              this.threads = this.threads.filter(x => x.id !== data.headAnnotationId) // filter out the thread
+              this.getSingleThread(data.sourceUrl, classId, data.threadId, data.authorId) // data contains info about the thread and if the new thread as posted by an instructor
+              console.log("new thread: gathered new replies")
+            }
           }
         }
       })
@@ -591,10 +578,9 @@ function embedNbApp () {
         
        
       },
-      getSingleThread: function (threadId) { // get single thread and add it to the list
+      getSingleThread: function (sourceUrl, classId, threadId, authorId) { // get single thread and add it to the list
         const token = localStorage.getItem("nb.user");
-        const config = { headers: { Authorization: 'Bearer ' + token }, params: { is_instructor: this.user.role === 'instructor', thread_id:  threadId} }
-        console.log(this.user.role ==='instructor')
+        const config = { headers: { Authorization: 'Bearer ' + token }, params: { source_url: sourceUrl, class_id: classId, thread_id:  threadId} }
         axios.get('/api/annotations/specific_thread',  config)
         .then(res => {
           console.log(res.data)
@@ -608,10 +594,29 @@ function embedNbApp () {
           let comment = new NbComment(item, res.data.annotationsData)
           
           this.threads.push(comment)
-          if (comment.instructor) {
+          console.log(this.users[authorId])
+          if (this.users[authorId].role === "instructor") {
             this.notificationThreads.push(new NbNotification("An instructor posted a reply or new thread", comment))
           } else if (comment.hasMyReplyRequests() && this.showSyncFeatures) {
-            this.notificationThreads.push(new NbNotification("A response to a reply request from you has been posted", comment))
+            let notification = new NbNotification("A response to a reply request from you has been posted", comment)
+            this.notificationThreads.push(notification)
+
+            this.$swal({
+              title: '',
+              text: "A recent comment was added to a thread you requested a reply from. Do you want to open it?",
+              type: 'success',
+              showCancelButton: true,
+              confirmButtonColor: '#3085d6',
+              cancelButtonColor: '#d33',
+              confirmButtonText: 'Yes, bring me there!',
+              toast: true,
+              position: 'top-start'
+            }).then((result) => {
+              if (result.value) {
+                this.swalClicked = true 
+                this.onSelectNotification(notification)
+              }
+            })   
           }
 
         })
@@ -844,15 +849,23 @@ function embedNbApp () {
         this.threadsSelectedInPanes["allThreads"] = thread
         thread.markSeenAll()
       },
-      onSelectInterestingThread: function (thread) {
-        this.threadSelected = thread
-        this.threadsSelectedInPanes["interestingThreads"] = thread
-        thread.markSeenAll()
+      onSelectNotification: function (notification) {
+        this.notificationSelected = notification
+        this.threadSelected = notification.comment 
+        this.threadsSelectedInPanes["notifications"] = notification.comment
+        notification.comment.markSeenAll()
       },
       onUnselectThread: function (thread) {
-        this.threadSelected = null
-        if (this.draftRange && this.isEditorEmpty) {
-          this.onCancelDraft()
+        if (this.swalClicked) {
+          console.log(this.threadSelected)
+          console.log(this.threadsSelectedInPanes["notification"])
+          this.swalClicked = false // don't unselect if this was a popup notification click
+        } else { // otherwise, it was a valid unselect thread click
+          this.threadSelected = null
+          console.log("hi")
+          if (this.draftRange && this.isEditorEmpty) {
+            this.onCancelDraft()
+          }
         }
       },
       onHoverThread: function (thread) {
@@ -866,9 +879,8 @@ function embedNbApp () {
       },
       onNewRecentThread: function (thread) {
         // console.log(thread)
-        // this.notificationThreads.push(new NbNotification("A recent thread near you has been posted", thread))
-        if (thread.id) { // only if this has an id (we queried it from the server, should we show the notification)
-          console.log(window.location.href + `#nb-comment-${thread.id}`)
+        if (thread.author !== this.user.id) {
+          this.notificationThreads.push(new NbNotification("A recent thread near you has been posted", thread))
         }
       },
       onToggleHighlights: function (show) {
@@ -942,7 +954,6 @@ function embedNbApp () {
     },
     components: {
       NbHighlights,
-      NbOnline,
       NbSidebar,
       NbLogin,
       NbNoAccess,

@@ -1,7 +1,19 @@
 <template>
-  <div class="nb-online">
-    <div v-if="showSyncFeatures">
-      <h3>Classmates & Instructors Currently Online: {{numOnlineUsers}}</h3>
+  <div 
+    class="nb-sync"
+    :style="style"
+  >
+    <div>
+      <label>Show Sync Features</label>
+      <input type="checkbox"
+          v-model="showSyncFeatures"
+          :true-value="true"
+          :false-value="false"
+          @change="onShowSyncFeaturesChange($event)"
+      >
+    </div>
+    <div class="nb-online" v-if="showSyncFeatures">
+      <label>Users Online: {{numOnlineUsers}}</label>
       <!-- <avatar 
         v-for="user in onlineUsers"
         :key="user"
@@ -27,11 +39,23 @@ export default {
     showSyncFeatures: {
       type: Boolean,
       default: true
+    },
+    nbMenuShowing: {
+      type: Boolean,
+      default: false
     }
   },
   computed: {
     numOnlineUsers: function() {
       return this.onlineUsers.length
+    },
+    style: function() {
+      return this.nbMenuShowing ? "margin-top: 5px" : "margin-top: 2.5em"
+    }
+  },
+  methods: {
+    onShowSyncFeaturesChange: function(event) {
+        this.$emit('show-sync-features', this.showSyncFeatures)
     }
   },
   mounted: function () {

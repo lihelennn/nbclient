@@ -33,8 +33,8 @@
       <div class="checkbox-buttons">
         <input type="checkbox" id="draft-request-reply" v-model="replyRequested">
         <label for="draft-request-reply">Request replies</label>
-        <input type="checkbox" id="draft-call-help" v-model="callForHelp">
-        <label for="draft-call-help">Call for help</label>
+        <!-- <input type="checkbox" id="draft-call-help" v-model="callForHelp">
+        <label for="draft-call-help">Call for help</label> -->
         <div class="buttons">
           <button class="cancel" @click="cancel">Cancel</button>
           <button class="submit" @click="submit" :disabled="isEditorEmpty">

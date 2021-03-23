@@ -24,8 +24,9 @@
             :notification="notifications[notifications.length-1-index]"
             :key="notifications[notifications.length-1-index]"
             :thread-selected="threadSelected"
+            :notification-selected="notificationSelected"
             :threads-hovered="threadsHovered"
-            @select-interesting-thread="onSelectInterestingThread"
+            @select-notification="onSelectNotification"
             @hover-thread="onHoverNotification"
             @unhover-thread="onUnhoverNotification">
         </notification-row>
@@ -71,6 +72,7 @@ export default {
       default: 0
     },
     threadSelected: Object,
+    notificationSelected: Object,
     threadsHovered: {
       type: Array,
       default: () => []
@@ -108,8 +110,8 @@ export default {
     toggleHighlights: function () {
       this.$emit('toggle-highlights', !this.showHighlights)
     },
-    onSelectInterestingThread: function (thread) {
-        this.$emit('select-interesting-thread', thread)
+    onSelectNotification: function (notification) {
+        this.$emit('select-notification', notification)
     },
     onHoverNotification: function (thread) {
         this.$emit('hover-thread', thread)   

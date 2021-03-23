@@ -247,6 +247,8 @@ class NbComment {
       })
     } else {
       return axios.post(`/api/annotations/reply/${this.parent.id}`, {
+        url: window.location.href.split('?')[0],
+        class: classId,
         content: this.html,
         author: this.author,
         tags: this.hashtags,

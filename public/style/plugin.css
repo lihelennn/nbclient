@@ -100,13 +100,13 @@
   pointer-events: none;
 }
 
+#nb-app .nb-sync{
+  display: flex;
+}
+
 #nb-app .nb-online{
-  position: absolute;
-  top: 0;
-  right: 395px; /* assuming sidebar is 350px wide + 2 * 10px padding + 5px margin */
-  width: calc(100vw - 395px);
-  height: 100%;
-  pointer-events: none;
+  margin-left: auto;
+  background-color: #e5ddf9;
 }
 
 #nb-app .nb-highlights{
@@ -176,7 +176,7 @@
 }
 
 #nb-app .nb-sidebar .filter-view {
-  margin: 32px 0 5px 0;
+  margin: 10px 0 5px 0;
 }
 
 #nb-app .nb-sidebar .nb-menu+.filter-view {

@@ -58,6 +58,7 @@ export default {
   name: 'notification-row',
   props: {
     threadSelected: Object,
+    notificationSelected: Object,
     threadsHovered: {
       type: Array,
       default: () => []
@@ -71,11 +72,11 @@ export default {
   },
   computed: {
     rowStyle: function () {
-      if (this.threadSelected && this.thread === this.threadSelected) {
-        return 'background-color: #70a0f0; color: #fff'
+      if (this.notificationSelected && this.notificationSelected === this.notification) {
+        return 'background-color: #b096ee; color: #fff'
       }
       if (this.threadsHovered.includes(this.thread)) {
-        return 'background-color: #ccddf9'
+        return 'background-color: #e5ddf9'
       }
       return null
     },
@@ -132,8 +133,8 @@ export default {
   },
   methods: {
     onClickNotification: function () {
-          this.notification.setIsUnseen(false)
-          this.$emit('select-interesting-thread', this.thread)
+        this.notification.setIsUnseen(false)
+        this.$emit('select-notification', this.notification)
     },
     onHoverNotification: function () {
         console.log(this.notification)

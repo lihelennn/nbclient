@@ -5,10 +5,15 @@
         <nb-menu 
             :myClasses="myClasses" 
             :activeClass="activeClass"
-            @switch-class="onSwitchClass"
-            @show-sync-features="onShowSyncFeatures">
+            @switch-class="onSwitchClass">
         </nb-menu>
     </div>
+    <nb-online
+      :online-users="onlineUsers"
+      :show-sync-features="showSyncFeatures"
+      :nb-menu-showing="myClasses.length > 1"
+      @show-sync-features="onShowSyncFeatures">
+    </nb-online>
     <filter-view
         :me="user"
         :users="sortedUsers"
@@ -44,12 +49,13 @@
     <notification-view
         :notifications="notificationThreads"
         :total-count="notificationThreads.length"
-        :thread-selected="threadsSelectedInPanes['interestingThreads']"
+        :thread-selected="threadsSelectedInPanes['notifications']"
+        :notification-selected="notificationSelected"
         :threads-hovered="threadsHovered"
         :show-highlights="showHighlights"
         :still-gathering-threads="stillGatheringThreads"
         @toggle-highlights="onToggleHighlights"
-        @select-interesting-thread="onSelectInterestingThread"
+        @select-notification="onSelectNotification"
         @hover-thread="onHoverThread"
         @unhover-thread="onUnhoverThread">
     </notification-view>
@@ -103,6 +109,7 @@ import ThreadView from './thread/ThreadView.vue'
 import EditorView from './editor/EditorView.vue'
 import NbMenu from './NbMenu.vue'
 import NbChat from './NbChat.vue'
+import NbOnline from './NbOnline.vue'
 
 export default {
   name: 'nb-sidebar',
@@ -114,6 +121,10 @@ export default {
     users: {
       type: Object,
       default: () => {}
+    },
+    onlineUsers: {
+      type: Array,
+      default: () => []
     },
     myClasses: {
       type: Array,
@@ -140,6 +151,7 @@ export default {
       default: () => {}
     },
     threadSelected: Object,
+    notificationSelected: Object,
     threadsHovered: {
       type: Array,
       default: () => []
@@ -160,7 +172,11 @@ export default {
     notificationThreads: {
       type: Array,
       default: () => []
-    }
+    },
+    showSyncFeatures: {
+      type: Boolean,
+      default: true
+    },
   },
   data () {
     return {
@@ -211,6 +227,8 @@ export default {
       }
     },
     threadSelected: function (val) {
+      console.log(val)
+      console.log(this.threadsSelectedInPanes['allThreads'])
       if (!val && this.replyToComment && this.editor.isEmpty) {
         // When thread is unselected, cancel reply if editor is empty.
         this.editor.visible = false
@@ -273,19 +291,16 @@ export default {
     onMinUpvotes: function (min) {
       this.$emit('min-upvotes', min)
     },
-    onSelectInterestingThread: function (thread) {
-      this.$emit('select-interesting-thread', thread)
+    onSelectNotification: function (notification) {
+      this.$emit('select-notification', notification)
     },
     onSelectThread: function (thread) {
       this.$emit('select-thread', thread)
     },
     onHoverThread: function (thread) {
-      console.log("hovering")
-      console.log(thread)
       this.$emit('hover-thread', thread)
     },
     onUnhoverThread: function (thread) {
-      console.log("unhovering")
       this.$emit('unhover-thread', thread)
     },
     onEditComment: function (comment) {
@@ -437,6 +452,7 @@ export default {
     NbMenu,
     NbChat,
     NotificationView,
+    NbOnline,
   }
 }
 </script>

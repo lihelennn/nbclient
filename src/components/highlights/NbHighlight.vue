@@ -18,7 +18,7 @@
           attributeType="XML"
           attributeName="fill"
           values="#ffffff;#4a2270ad;#ffffff;#ffffff"
-          dur="0.8s"
+          dur="4.0s"
           repeatCount="indefinite"/>
     </rect>
 

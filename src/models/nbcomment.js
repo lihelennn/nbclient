@@ -190,11 +190,8 @@ class NbComment {
     this.setText()
     
     this.usersTyping = []
+    this.associatedNotification = null
 
-    /**
-     * See if this thread is intersting for the user to explore (pinned by user, posted nearby)
-     */
-    this.isInterestingThread = this.isInteresting()
   }
 
   /**
@@ -229,7 +226,7 @@ class NbComment {
     const headers = { headers: { Authorization: 'Bearer ' + token }}
     if (!this.parent) {
       return axios.post('/api/annotations/new_annotation', {
-        url: window.location.href.split('?')[0],
+        url: sourceUrl,
         class: classId,
         content: this.html,
         range: this.range.serialize(),
@@ -247,7 +244,7 @@ class NbComment {
       })
     } else {
       return axios.post(`/api/annotations/reply/${this.parent.id}`, {
-        url: window.location.href.split('?')[0],
+        url: sourceUrl,
         class: classId,
         content: this.html,
         author: this.author,
@@ -533,17 +530,14 @@ class NbComment {
     return false
   }
 
-  /** 
-   * Checks to see if this thread if interesting (bookmarked, pinned, reply requested, posted recently nearby)
-   */
-  isInteresting () {
-    if (this.replyRequestedByMe || this.bookmarked) { return true }
+  getAllAuthors () {
+    let authors = new Set([this.author])
     for (let child of this.children) {
-      if (child.isInteresting()) {
-        return true
+      for (let author of child.getAllAuthors()) {
+        authors.add(author)
       }
     }
-    return false
+    return authors
   }
 
   /**
@@ -590,12 +584,10 @@ class NbComment {
       this.replyRequestCount += 1
       this.replyRequestedByMe = true
     }
-    this.isInterestingThread = this.isInteresting()
     if (this.id) {
       const token = localStorage.getItem("nb.user");
       const headers = { headers: { Authorization: 'Bearer ' + token }}
       axios.post(`/api/annotations/replyRequest/${this.id}`, { replyRequest: this.replyRequestedByMe }, headers)
-      this.isInterestingThread = this.isInteresting()
     }
   }
 
@@ -604,7 +596,6 @@ class NbComment {
    */
   toggleBookmark () {
     this.bookmarked = !this.bookmarked
-    this.isInterestingThread = this.isInteresting()
     if (this.id) {
       const token = localStorage.getItem("nb.user");
       const headers = { headers: { Authorization: 'Bearer ' + token }}

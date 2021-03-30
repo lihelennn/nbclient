@@ -119,7 +119,11 @@
       </div>
       <div class="smallCommentInput">
         <input v-model="smallComment" v-on:keyup="checkSubmittedSmallComment" class="smallCommentText" type="text" placeholder="Write a comment...">
-        <button class="smallCommentButton" @click="draftReply(comment.parent)"><b-icon-arrows-angle-expand></b-icon-arrows-angle-expand></button>
+          <button class="smallCommentButton" 
+            v-tooltip="'Open rich text editor'"
+            @click="draftReply(comment.parent)">
+            <b-icon-arrows-angle-expand></b-icon-arrows-angle-expand>
+          </button>
       </div>
       <br><br>
     </div>

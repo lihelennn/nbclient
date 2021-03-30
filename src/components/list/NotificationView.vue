@@ -14,11 +14,15 @@
         <span class="count">
           {{ totalLabel }}
         </span>
-        <span class="configure">
-          <a href="https://localhost:8080">Configure</a>
+        <span class="mute" v-tooltip="notificationsMuted ? 'Click to unmute notifications' : 'Click to mute notifications'"
+            @click="toggleMute">
+          <font-awesome-icon icon="bell-slash" class="icon" v-if="notificationsMuted">
+          </font-awesome-icon>
+          <font-awesome-icon icon="bell" class="icon" v-else>
+          </font-awesome-icon>
         </span>
       </div>
-      <div class="list-table">
+      <div class="notification-table">
         <notification-row
             v-for="(notification,index) in notifications" 
             :notification="notifications[notifications.length-1-index]"
@@ -85,6 +89,7 @@ export default {
   data () {
     return {
       isCollapsed: true,
+      notificationsMuted: false,
     }
   },
   computed: {
@@ -118,6 +123,11 @@ export default {
     },
     onUnhoverNotification: function (thread) {
         this.$emit('unhover-thread', thread)
+    },
+    toggleMute: function () {
+      this.notificationsMuted = !this.notificationsMuted
+      console.log(this.notificationsMuted)
+      this.$emit('notifications-muted', this.notificationsMuted)
     }
   },
   components: {

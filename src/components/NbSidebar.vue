@@ -57,7 +57,9 @@
         @toggle-highlights="onToggleHighlights"
         @select-notification="onSelectNotification"
         @hover-thread="onHoverThread"
-        @unhover-thread="onUnhoverThread">
+        @unhover-thread="onUnhoverThread"
+        @notifications-muted="onNotificationsMuted"
+    >
     </notification-view>
     <thread-view
         v-if="threadSelected"
@@ -356,7 +358,8 @@ export default {
         upvoteCount: 0,
         seenByMe: true,
       })
-      comment.submitAnnotation(this.activeClass.id)
+      let source = this.sourceUrl.length > 0 ? this.sourceUrl : window.location.href.split('?')[0]
+      comment.submitAnnotation(this.activeClass.id, source)
       if (data.replyToComment) {
         data.replyToComment.children.push(comment)
       }
@@ -441,6 +444,9 @@ export default {
     },
     onNextComment: function () {
       this.$emit('next-comment')
+    },
+    onNotificationsMuted: function (muted) {
+      this.$emit('notifications-muted', muted)
     }
   },
   components: {

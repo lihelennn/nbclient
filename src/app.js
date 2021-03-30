@@ -212,6 +212,7 @@ function embedNbApp () {
             @thread-stop-typing="onThreadStopTyping"
             @prev-comment="onPrevComment"
             @next-comment="onNextComment"
+            @notifications-muted="onNotificationsMuted"
             @logout="onLogout">
           </nb-sidebar>
         </div>
@@ -259,7 +260,8 @@ function embedNbApp () {
       currentSectionId: "",
       threadsSelectedInPanes: {"allThreads": null, "notifications": null},
       notificationThreads: [],
-      swalClicked: false
+      swalClicked: false,
+      notificationsMuted: false,
     },
     computed: {
       style: function () {
@@ -446,7 +448,8 @@ function embedNbApp () {
       socket.on('connections', (data) => {
         if (data.classId === this.activeClass.id && data.sectionId === this.currentSectionId) {
           console.log(data.connections)
-          this.onlineUsers = data.connections
+          let onlineUsersSet = new Set(data.connections)
+          this.onlineUsers = [...onlineUsersSet]
         }
       })
       socket.on("new_thread", (data) => {
@@ -454,12 +457,11 @@ function embedNbApp () {
         console.log(this.users[data.authorId].role==="instructor")
         let userIdsSet = new Set(data.userIds)
         console.log(data)
-        if (data.authorId !== this.user.id && userIdsSet.has(this.user.id)) { // find if we are one of the target audiences w/ visibility + section permissions for this new_thread if current user, we already added new thread to their list
-          const source = window.location.origin + window.location.pathname
+        if (data.authorId === this.user.id && userIdsSet.has(this.user.id)) { // find if we are one of the target audiences w/ visibility + section permissions for this new_thread if current user, we already added new thread to their list
           let classId = data.classId
           if (this.activeClass) { // originally had a check here to see if currently signed in, then don't retrieve again
-            if (this.activeClass.id == classId && source === data.sourceUrl) {
-              this.getSingleThread(data.sourceUrl, classId, data.threadId, data.authorId) // data contains info about the thread and if the new thread as posted by an instructor
+            if (this.activeClass.id == classId && this.sourceURL === data.sourceUrl) {
+              this.getSingleThread(data.sourceUrl, classId, data.threadId, data.authorId, data.taggedUsers, true) // data contains info about the thread and if the new thread as posted by an instructor
               console.log("new thread: gathered new annotations")
             }
           }
@@ -476,13 +478,12 @@ function embedNbApp () {
         console.log(this.users[data.authorId])
         console.log(this.users[data.authorId].role==="instructor")
         console.log(data)
-        if (data.authorId !== this.user.id) { // if current user, we already added new reply to their list
-          const source = window.location.origin + window.location.pathname
+        if (data.authorId === this.user.id) { // if current user, we already added new reply to their list
           let classId = data.classId
           if (this.activeClass) { // originally had a check here to see if currently signed in, then don't retrieve again
-            if (this.activeClass.id == classId && source === data.sourceUrl) {
+            if (this.activeClass.id == classId && this.sourceURL === data.sourceUrl) {
               this.threads = this.threads.filter(x => x.id !== data.headAnnotationId) // filter out the thread
-              this.getSingleThread(data.sourceUrl, classId, data.threadId, data.authorId) // data contains info about the thread and if the new thread as posted by an instructor
+              this.getSingleThread(data.sourceUrl, classId, data.threadId, data.authorId, data.taggedUsers, false) // data contains info about the thread and if the new thread as posted by an instructor
               console.log("new thread: gathered new replies")
             }
           }
@@ -578,7 +579,7 @@ function embedNbApp () {
         
        
       },
-      getSingleThread: function (sourceUrl, classId, threadId, authorId) { // get single thread and add it to the list
+      getSingleThread: function (sourceUrl, classId, threadId, authorId, taggedUsers, isNewThread) { // get single thread and add it to the list
         const token = localStorage.getItem("nb.user");
         const config = { headers: { Authorization: 'Bearer ' + token }, params: { source_url: sourceUrl, class_id: classId, thread_id:  threadId} }
         axios.get('/api/annotations/specific_thread',  config)
@@ -593,33 +594,57 @@ function embedNbApp () {
           // Nb Comment
           let comment = new NbComment(item, res.data.annotationsData)
           
-          this.threads.push(comment)
           console.log(this.users[authorId])
-          if (this.users[authorId].role === "instructor") {
-            this.notificationThreads.push(new NbNotification("An instructor posted a reply or new thread", comment))
-          } else if (comment.hasMyReplyRequests() && this.showSyncFeatures) {
-            let notification = new NbNotification("A response to a reply request from you has been posted", comment)
-            this.notificationThreads.push(notification)
-
-            this.$swal({
-              title: '',
-              text: "A recent comment was added to a thread you requested a reply from. Do you want to open it?",
-              type: 'success',
-              showCancelButton: true,
-              confirmButtonColor: '#3085d6',
-              cancelButtonColor: '#d33',
-              confirmButtonText: 'Yes, bring me there!',
-              toast: true,
-              position: 'top-start'
-            }).then((result) => {
-              if (result.value) {
-                this.swalClicked = true 
-                this.onSelectNotification(notification)
+          console.log(taggedUsers)
+          console.log(comment.getAllAuthors())
+          var notification = null
+          if (taggedUsers.includes(this.user.id)) {
+            notification = new NbNotification("You have been tagged in a comment", comment, true)
+          } else if (this.users[authorId].role === "instructor") {
+            if (isNewThread) {
+              notification = new NbNotification("An instructor posted a new thread", comment, false)
+            } else {
+              if (comment.getAllAuthors().has(this.user.id)) {
+                notification = new NbNotification("An instructor commented in a thread you're in", comment, false)
               }
-            })   
+            }
+          } else if (isNewThread && comment.hasReplyRequests()) {
+            notification = new NbNotification("A classmate needs a reply request", comment, false)
+          } else if (comment.hasMyReplyRequests()) {
+            notification = new NbNotification("Someone may have responded to your reply request", comment, true)
           }
-
+          console.log(notification)
+          if (notification !== null) {
+            this.notificationThreads.push(notification)
+            this.triggerPopupNotification(notification)
+            comment.associatedNotification = notification 
+            console.log("setting associated notification after getting single thread")
+          }
+          console.log(comment.associatedNotification)
+          this.threads.push(comment)
         })
+      },
+      triggerPopupNotification: function (notification) {
+        console.log(this.notificationsMuted)
+        if (notification.triggerPopup && !this.notificationsMuted) {
+          this.$swal({
+            title: '',
+            text: notification.title,
+            type: 'success',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Bring me there!',
+            toast: true,
+            position: 'top-start'
+          }).then((result) => {
+            if (result.value) {
+              this.swalClicked = true 
+              notification.setIsUnseen(false)
+              this.onSelectNotification(notification)
+            }
+          }) 
+        }
       },
       getAllAnnotations: function (source, newActiveClass) {
         this.stillGatheringThreads = true
@@ -879,8 +904,11 @@ function embedNbApp () {
       },
       onNewRecentThread: function (thread) {
         // console.log(thread)
-        if (thread.author !== this.user.id) {
-          this.notificationThreads.push(new NbNotification("A recent thread near you has been posted", thread))
+        if (thread.author === this.user.id && thread.associatedNotification === null) { // if not this author and no notifications for this thread yet
+          let notification = new NbNotification("A recent thread near you has been posted", thread, false)
+          this.notificationThreads.push(notification)
+          this.associatedNotification = notification
+          console.log("setting associatedn notif on recent thread")
         }
       },
       onToggleHighlights: function (show) {
@@ -918,6 +946,10 @@ function embedNbApp () {
         if (nextIdx >= 0 && nextIdx < this.filteredThreads.length) {
           this.onSelectThread(this.filteredThreads[nextIdx])
         }
+      },
+      onNotificationsMuted: function (muted) {
+        this.notificationsMuted = muted
+        console.log(this.notificationsMuted)
       },
       onLogout: function () {
           localStorage.removeItem("nb.user")

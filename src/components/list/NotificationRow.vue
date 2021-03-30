@@ -72,13 +72,14 @@ export default {
   },
   computed: {
     rowStyle: function () {
+      let inlineFlex = 'display: inline-flex;'
       if (this.notificationSelected && this.notificationSelected === this.notification) {
-        return 'background-color: #b096ee; color: #fff'
+        return inlineFlex + 'background-color: #b096ee; color: #fff'
       }
       if (this.threadsHovered.includes(this.thread)) {
-        return 'background-color: #e5ddf9'
+        return inlineFlex +'background-color: #e5ddf9'
       }
-      return null
+      return inlineFlex
     },
     counterStyle: function () {
       if (this.thread.isUnseen()) {
@@ -137,13 +138,9 @@ export default {
         this.$emit('select-notification', this.notification)
     },
     onHoverNotification: function () {
-        console.log(this.notification)
-        console.log(this.thread)
         this.$emit('hover-thread', this.thread)   
     },
     onUnhoverNotification: function () {
-        console.log(this.notification)
-        console.log(this.thread)
         this.$emit('unhover-thread', this.thread)
     }
   },

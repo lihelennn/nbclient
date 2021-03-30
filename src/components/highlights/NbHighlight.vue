@@ -18,7 +18,7 @@
           attributeType="XML"
           attributeName="fill"
           values="#ffffff;#4a2270ad;#ffffff;#ffffff"
-          dur="4.0s"
+          dur="3.0s"
           repeatCount="indefinite"/>
     </rect>
 
@@ -160,18 +160,24 @@ export default {
       if (this.thread.usersTyping && this.thread.usersTyping.length > 0 && this.showSyncFeatures) { // if typing, show a pink outline color
         return 'stroke: rgb(255, 0, 255); stroke-width: 25'
       }
-      if (this.thread.replyRequested && this.showSyncFeatures) {
-        return
-      }
-      if (this.recent && this.showSyncFeatures) { // if recently shown, show a cyan outline color
-        return 'stroke: rgb(0, 255, 255); stroke-width: 15'
-      }
       if (this.thread === this.threadSelected) {
         return 'fill: rgb(1, 99, 255); opacity: 0.3;'
       }
       if (this.threadsHovered.includes(this.thread)) {
         return 'fill: rgb(1, 99, 255); opacity: 0.12;'
       }
+
+      if (this.thread.replyRequested && this.showSyncFeatures) {
+        return
+      }
+      if (this.recent && this.showSyncFeatures) { // if recently shown, show a cyan outline color
+        return 'stroke: rgb(0, 255, 255); stroke-width: 15'
+      }
+      if (this.thread.associatedNotification !== null) {
+        console.log("NOTIFICATION!!!")
+        return 'fill: rgb(80, 54, 255); opacity: 0.3;'
+      }
+
       return null
     },
     bounds: function () {

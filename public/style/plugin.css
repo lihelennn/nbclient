@@ -376,7 +376,22 @@
   width: 13px;
   height: 16px;
 }
-
+#nb-app .nb-sidebar .list-view .list-row .flags .icon-wrapper.notification {
+  background-color: #b096ee;
+  color: #fff;
+  font-size: 14px;
+  font-family: 'Verdana', 'Geneva', sans-serif;
+}
+#nb-app .nb-sidebar .list-view .list-row .flags .placeholder.notification {
+  width: 16px;
+  height: 16px;
+}
+#nb-app .nb-sidebar .list-view .notification-table {
+  position: relative;
+  height: 120px;
+  border: solid 1px #ddd;
+  overflow-y: scroll;
+}
 #nb-app .nb-sidebar .thread-view {
   min-height: 100px;
   margin-bottom: 10px;
@@ -417,6 +432,17 @@
   font-size: 15px;
 }
 #nb-app .nb-sidebar .thread-view .thread-row .header .author .instr-icon {
+  display: inline-block;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 3px;
+  background-color: #f4ad3e;
+  color: #fff;
+  font-size: 11px;
+  vertical-align: bottom;
+  font-family: 'Verdana', 'Geneva', sans-serif;
+}
+#nb-app .nb-sidebar .thread-view .thread-row .smallCommentHeader .author .instr-icon {
   display: inline-block;
   height: 16px;
   padding: 0 3px;
@@ -826,7 +852,7 @@ nb-innotation {
   display: flex;
   align-items: center;
   padding: 0 15px 0 5px;
-  background: #eee;
+  background: #efefef;
   border: solid 1px #aaa;
   cursor: pointer;
 }
@@ -835,7 +861,8 @@ nb-innotation {
   margin-left: auto
 }
 
-#nb-app .nb-sidebar .list-view .list-header .configure {
+#nb-app .nb-sidebar .list-view .list-header .mute {
   margin-left: auto;
-  font-size: 13px;
+  margin-top: 3px;
+  margin-right: 3px;
 }

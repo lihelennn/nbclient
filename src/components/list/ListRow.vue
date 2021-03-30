@@ -20,6 +20,13 @@
         </font-awesome-icon>
       </div>
       <div v-else class="placeholder question"></div>
+      <div v-if="thread.associatedNotification !== null" 
+        v-tooltip="'This comment has an associated notification'"
+        class="icon-wrapper notification"
+      >
+        N
+      </div>
+      <div v-else class="placeholder notification"></div>
     </div>
     <span :style="textStyle">
       {{ thread.text }}

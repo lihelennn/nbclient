@@ -47,6 +47,7 @@
         @unhover-thread="onUnhoverThread">
     </list-view>
     <notification-view
+        v-if="false"
         :notifications="notificationThreads"
         :total-count="notificationThreads.length"
         :thread-selected="threadsSelectedInPanes['notifications']"

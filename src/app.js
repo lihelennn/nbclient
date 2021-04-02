@@ -21,6 +21,7 @@ import { compareDomPosition } from './utils/compare-util.js'
 
 import NbHighlights from './components/highlights/NbHighlights.vue'
 import NbSidebar from './components/NbSidebar.vue'
+import NbNotificationSidebar from './components/NbNotificationSidebar.vue'
 import NbNoAccess from './components/NbNoAccess.vue'
 import NbLogin from './components/NbLogin.vue'
 import axios from 'axios'
@@ -45,14 +46,14 @@ axios.defaults.baseURL = 'https://nb2.csail.mit.edu/'
 // axios.defaults.baseURL = 'https://jumana-nb.csail.mit.edu/'
 //axios.defaults.baseURL = 'https://127.0.0.1:3000/' // for local dev only
 // axios.defaults.baseURL = 'https://helen-nb.csail.mit.edu/'
-// axios.defaults.baseURL = 'https://127.0.0.1:3000/' // for local dev only
+axios.defaults.baseURL = 'https://127.0.0.1:3000/' // for local dev only
 axios.defaults.withCredentials = true
 
-export const PLUGIN_HOST_URL = 'https://nb2.csail.mit.edu/client'
+// export const PLUGIN_HOST_URL = 'https://nb2.csail.mit.edu/client'
 // export const PLUGIN_HOST_URL = 'https://jumana-nb.csail.mit.edu/client'
 // export const PLUGIN_HOST_URL = 'https://127.0.0.1:3001' // for local dev only
 // export const PLUGIN_HOST_URL = 'https://helen-nb.csail.mit.edu/client'
-// export const PLUGIN_HOST_URL = 'https://127.0.0.1:3001' // for local dev only
+export const PLUGIN_HOST_URL = 'https://127.0.0.1:3001' // for local dev only
 
 if (
   (document.attachEvent && document.readyState === 'complete') ||
@@ -96,7 +97,7 @@ function embedNbApp () {
 
   // assuming sidebar is 350px wide + 2 * 10px padding + 5px margin
   document.documentElement.setAttribute('style', 'overflow: overlay !important;')
-  document.body.setAttribute('style', 'position: initial !important; margin: 0 395px 0 0 !important;')
+  document.body.setAttribute('style', 'position: initial !important; margin: 0 395px 0 190px !important;')
 
   let element = document.createElement('div')
   element.id = 'nb-app-wrapper'
@@ -162,6 +163,25 @@ function embedNbApp () {
             @unhover-thread="onUnhoverThread"
             @new-recent-thread="onNewRecentThread">
           </nb-highlights>
+          <nb-notification-sidebar
+            :user="user"
+            :users="users"
+            :online-users="onlineUsers"
+            :still-gathering-threads="stillGatheringThreads"
+            :threads="filteredThreads"
+            :notification-selected="notificationSelected"
+            :threads-selected-in-panes="threadsSelectedInPanes"
+            :notification-threads="notificationThreads"
+            :threads-hovered="threadsHovered"
+            :show-highlights="showHighlights"
+            :show-sync-features="showSyncFeatures"
+            @toggle-highlights="onToggleHighlights"
+            @select-notification="onSelectNotification"
+            @hover-thread="onHoverThread"
+            @unhover-thread="onUnhoverThread"
+            @notifications-muted="onNotificationsMuted"
+          >
+          </nb-notification-sidebar>
           <nb-sidebar
             :user="user"
             :users="users"
@@ -907,7 +927,7 @@ function embedNbApp () {
         if (thread.author === this.user.id && thread.associatedNotification === null) { // if not this author and no notifications for this thread yet
           let notification = new NbNotification("A recent thread near you has been posted", thread, false)
           this.notificationThreads.push(notification)
-          this.associatedNotification = notification
+          thread.associatedNotification = notification
           console.log("setting associatedn notif on recent thread")
         }
       },
@@ -989,6 +1009,7 @@ function embedNbApp () {
       NbSidebar,
       NbLogin,
       NbNoAccess,
+      NbNotificationSidebar
     }
   })
 

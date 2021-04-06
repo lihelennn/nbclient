@@ -144,18 +144,17 @@
 #nb-app .nb-notification-sidebar {
   display: flex;
   flex-direction: column;
-  width: 175px;
-  height: 100vh;
-  overflow-y: scroll;
-  border-right: solid 3px #eee;
-  position: fixed;
-  top: 0;
-  left: 0;
+  overflow-y: auto;
   line-height: normal;
   font-size: 16px;
   font-family: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
-  background: #fff;
-  z-index: 30000;
+}
+
+#nb-app .nb-notification-sidebar #draggable-notification-card-header {
+  position: sticky; 
+  top: 0;
+  height: 40px;
+  font-weight: bold;
 }
 
 #nb-app .nb-sidebar .nb-nav-bar {
@@ -414,6 +413,9 @@
   justify-content: space-between;
   margin-right: 5px;
 }
+#nb-app .nb-notification-sidebar .notification-table .list-row .flags{
+  display: flex;
+}
 .icon-wrapper.counter {
   background-color: #eee;
   color: #aaa;
@@ -428,6 +430,9 @@
   color: #fff;
   font-size: 14px;
   font-family: 'Verdana', 'Geneva', sans-serif;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 3px;
 }
 .icon-wrapper.notification {
   background-color: #b096ee;
@@ -440,6 +445,7 @@
   height: 120px;
   border: solid 1px #ddd;
   overflow-y: scroll;
+  margin-left: 5px;
 }
 #nb-app .nb-sidebar .thread-view {
   min-height: 100px;
@@ -904,14 +910,22 @@ nb-innotation {
   background: #efefef;
   border: solid 1px #aaa;
   cursor: pointer;
+  height: 30px;
+}
+
+#nb-app .card-header-title {
+  margin: 0px;
 }
 
 #nb-app .collapse-button {
   margin-left: auto
 }
 
-.mute {
+.icons-left-parent {
   margin-left: auto;
+}
+
+.icons-left {
   margin-top: 3px;
   margin-right: 3px;
 }
@@ -931,3 +945,19 @@ nb-innotation {
   -webkit-transform: translateX(-50%) translateY(-50%) rotate(-90deg);
   transform:  translateX(-50%) translateY(-50%) rotate(-90deg);
 }
+
+.vdr {
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(228, 228, 228);
+  position: fixed;
+}
+
+.notification-close-button {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 10%;
+  background-color: #d57d80;
+}
+

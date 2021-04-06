@@ -1,35 +1,39 @@
 <template>
-  <div id="nb-notification-sidebar" class="nb-notification-sidebar" :style="style">
-    <notification-sidebar-view
-        v-if="!isCollapsed"
-        :notifications="notificationThreads"
-        :total-count="notificationThreads.length"
-        :thread-selected="threadsSelectedInPanes['notifications']"
-        :notification-selected="notificationSelected"
-        :threads-hovered="threadsHovered"
-        :show-highlights="showHighlights"
-        @toggle-highlights="onToggleHighlights"
-        @select-notification="onSelectNotification"
-        @hover-thread="onHoverThread"
-        @unhover-thread="onUnhoverThread"
-        @notifications-muted="onNotificationsMuted"
-    >
-    </notification-sidebar-view>
-    <div @click="onCollapseNotifications" class="outer" v-if='false'>
-        <div class="inner rotate">
-            <span class="card-header-title">{{title}} ({{numberUnseen}} unread)
-              <a class="button card-header-icon collapse-button">
-                <font-awesome-icon icon="chevron-up" v-if="!isCollapsed"/>
-                <font-awesome-icon icon="chevron-down" v-if="isCollapsed"/>
-              </a>
-            </span>
-        </div>
-    </div>
-  </div>
+    <vue-draggable-resizable 
+      v-if="draggableNotificationsOpened"
+      :w="300" :h="525" :z="30000000" 
+      :x="-500"
+      :y="250"
+      :handles="['tl', 'tr', 'br', 'bl']"
+      :min-height="350"
+      :min-width="275"
+      :parent="false">
+      <notification-sidebar-view
+          :notifications="notificationThreads"
+          :total-count="notificationThreads.length"
+          :thread-selected="threadsSelectedInPanes['notifications']"
+          :notification-selected="notificationSelected"
+          :threads-hovered="threadsHovered"
+          :show-highlights="showHighlights"
+          :notificationsMuted="notificationsMuted"
+          @toggle-highlights="onToggleHighlights"
+          @select-notification="onSelectNotification"
+          @hover-thread="onHoverThread"
+          @unhover-thread="onUnhoverThread"
+          @toggle-mute-notifications="onToggleMuteNotifications"
+          @close-draggable-notications="$emit('close-draggable-notications')"
+      >
+      </notification-sidebar-view>
+    </vue-draggable-resizable>
 </template>
 
 <script>
 import NotificationSidebarView from './list/NotificationSidebarView.vue'
+import Vue from 'vue'
+import VueDraggableResizable from 'vue-draggable-resizable'
+import 'vue-draggable-resizable/dist/VueDraggableResizable.css'
+Vue.component('vue-draggable-resizable', VueDraggableResizable)
+
 
 export default {
   name: 'nb-notification-sidebar',
@@ -72,11 +76,13 @@ export default {
       type: Boolean,
       default: true
     },
-  },
-  data () {
-    return {
-      isCollapsed: false,
-      notificationsMuted: false,
+    notificationsMuted: {
+      type: Boolean,
+      default: false,
+    },
+    draggableNotificationsOpened: {
+      type: Boolean,
+      default: false
     }
   },
   computed: {
@@ -121,9 +127,9 @@ export default {
     onUnhoverThread: function (thread) {
       this.$emit('unhover-thread', thread)
     },
-    onNotificationsMuted: function (muted) {
-      this.$emit('notifications-muted', muted)
-    }
+    onToggleMuteNotifications: function () {
+      this.$emit('toggle-mute-notifications')
+    },
   },
   components: {
     NotificationSidebarView,

@@ -3,7 +3,7 @@
     <header class="card-header"
       v-tooltip="tooltipType"
       @click="isCollapsed = !isCollapsed">
-      <p class="card-header-title">{{title}} ({{numberUnseen}} unread)</p>
+      <p class="card-header-title">{{title}} ({{numberUnseen}} / {{totalCount}} unread)</p>
       <a class="button card-header-icon collapse-button">
         <font-awesome-icon icon="chevron-up" v-if="!isCollapsed"/>
         <font-awesome-icon icon="chevron-down" v-if="isCollapsed"/>
@@ -14,13 +14,22 @@
         <span class="count">
           {{ totalLabel }}
         </span>
-        <span class="mute" v-tooltip="notificationsMuted ? 'Click to unmute notifications' : 'Click to mute notifications'"
+        <div class="icons-left-parent">
+          <span class="icons-left"
+            v-if="!draggableNotificationsOpened"
+            v-tooltip="'Open in separate popup'"
+            @click="onOpenDraggableNotifications">
+            <font-awesome-icon icon="envelope-open" class="icon">
+            </font-awesome-icon>          
+          </span>        
+          <span class="icons-left" v-tooltip="notificationsMuted ? 'Click to unmute notifications' : 'Click to mute notifications'"
             @click="toggleMute">
-          <font-awesome-icon icon="bell-slash" class="icon" v-if="notificationsMuted">
-          </font-awesome-icon>
-          <font-awesome-icon icon="bell" class="icon" v-else>
-          </font-awesome-icon>
-        </span>
+            <font-awesome-icon icon="bell-slash" class="icon" v-if="notificationsMuted">
+            </font-awesome-icon>
+            <font-awesome-icon icon="bell" class="icon" v-else>
+            </font-awesome-icon>
+          </span>
+        </div>
       </div>
       <div class="notification-table">
         <notification-row
@@ -85,11 +94,18 @@ export default {
       type: Boolean,
       default: true
     },
+    notificationsMuted: {
+      type: Boolean,
+      default: false,
+    },
+    draggableNotificationsOpened: {
+      type: Boolean,
+      default: true
+    }
   },
   data () {
     return {
       isCollapsed: true,
-      notificationsMuted: false,
     }
   },
   computed: {
@@ -125,9 +141,10 @@ export default {
         this.$emit('unhover-thread', thread)
     },
     toggleMute: function () {
-      this.notificationsMuted = !this.notificationsMuted
-      console.log(this.notificationsMuted)
-      this.$emit('notifications-muted', this.notificationsMuted)
+      this.$emit('toggle-mute-notifications')
+    },
+    onOpenDraggableNotifications: function () {
+      this.$emit('open-draggable-notifications')
     }
   },
   components: {

@@ -29,8 +29,8 @@ import VueJwtDecode from "vue-jwt-decode";
 
 
 import io from "socket.io-client";
-const socket = io("https://127.0.0.1:3000", {reconnect: true});
-// const socket = io("https://helen-nb.csail.mit.edu", {reconnect: true});
+// const socket = io("https://127.0.0.1:3000", {reconnect: true});
+const socket = io("https://helen-nb.csail.mit.edu", {reconnect: true});
 
 Vue.use(VueQuill)
 Vue.use(VTooltip)
@@ -46,14 +46,14 @@ axios.defaults.baseURL = 'https://nb2.csail.mit.edu/'
 // axios.defaults.baseURL = 'https://jumana-nb.csail.mit.edu/'
 //axios.defaults.baseURL = 'https://127.0.0.1:3000/' // for local dev only
 // axios.defaults.baseURL = 'https://helen-nb.csail.mit.edu/'
-axios.defaults.baseURL = 'https://127.0.0.1:3000/' // for local dev only
+// axios.defaults.baseURL = 'https://127.0.0.1:3000/' // for local dev only
 axios.defaults.withCredentials = true
 
-// export const PLUGIN_HOST_URL = 'https://nb2.csail.mit.edu/client'
+export const PLUGIN_HOST_URL = 'https://nb2.csail.mit.edu/client'
 // export const PLUGIN_HOST_URL = 'https://jumana-nb.csail.mit.edu/client'
 // export const PLUGIN_HOST_URL = 'https://127.0.0.1:3001' // for local dev only
 // export const PLUGIN_HOST_URL = 'https://helen-nb.csail.mit.edu/client'
-export const PLUGIN_HOST_URL = 'https://127.0.0.1:3001' // for local dev only
+// export const PLUGIN_HOST_URL = 'https://127.0.0.1:3001' // for local dev only
 
 if (
   (document.attachEvent && document.readyState === 'complete') ||
@@ -175,11 +175,14 @@ function embedNbApp () {
             :threads-hovered="threadsHovered"
             :show-highlights="showHighlights"
             :show-sync-features="showSyncFeatures"
+            :draggable-notifications-opened="draggableNotificationsOpened"
+            :notifications-muted="notificationsMuted"
             @toggle-highlights="onToggleHighlights"
             @select-notification="onSelectNotification"
             @hover-thread="onHoverThread"
             @unhover-thread="onUnhoverThread"
-            @notifications-muted="onNotificationsMuted"
+            @toggle-mute-notifications="onToggleMuteNotifications"
+            @close-draggable-notications="onCloseDraggableNotifications"
           >
           </nb-notification-sidebar>
           <nb-sidebar
@@ -200,6 +203,8 @@ function embedNbApp () {
             :draft-range="draftRange"
             :show-highlights="showHighlights"
             :source-url="sourceURL"
+            :draggable-notifications-opened="draggableNotificationsOpened"
+            :notifications-muted="notificationsMuted"
             threadSelectedPane="allThreads"
             :show-sync-features="showSyncFeatures"
             @switch-class="onSwitchClass"
@@ -232,7 +237,8 @@ function embedNbApp () {
             @thread-stop-typing="onThreadStopTyping"
             @prev-comment="onPrevComment"
             @next-comment="onNextComment"
-            @notifications-muted="onNotificationsMuted"
+            @toggle-mute-notifications="onToggleMuteNotifications"
+            @open-draggable-notifications="onOpenDraggableNotifications"
             @logout="onLogout">
           </nb-sidebar>
         </div>
@@ -282,6 +288,7 @@ function embedNbApp () {
       notificationThreads: [],
       swalClicked: false,
       notificationsMuted: false,
+      draggableNotificationsOpened: true,
     },
     computed: {
       style: function () {
@@ -477,7 +484,7 @@ function embedNbApp () {
         console.log(this.users[data.authorId].role==="instructor")
         let userIdsSet = new Set(data.userIds)
         console.log(data)
-        if (data.authorId === this.user.id && userIdsSet.has(this.user.id)) { // find if we are one of the target audiences w/ visibility + section permissions for this new_thread if current user, we already added new thread to their list
+        if (data.authorId !== this.user.id && userIdsSet.has(this.user.id)) { // find if we are one of the target audiences w/ visibility + section permissions for this new_thread if current user, we already added new thread to their list
           let classId = data.classId
           if (this.activeClass) { // originally had a check here to see if currently signed in, then don't retrieve again
             if (this.activeClass.id == classId && this.sourceURL === data.sourceUrl) {
@@ -498,7 +505,7 @@ function embedNbApp () {
         console.log(this.users[data.authorId])
         console.log(this.users[data.authorId].role==="instructor")
         console.log(data)
-        if (data.authorId === this.user.id) { // if current user, we already added new reply to their list
+        if (data.authorId !== this.user.id) { // if current user, we already added new reply to their list
           let classId = data.classId
           if (this.activeClass) { // originally had a check here to see if currently signed in, then don't retrieve again
             if (this.activeClass.id == classId && this.sourceURL === data.sourceUrl) {
@@ -572,7 +579,6 @@ function embedNbApp () {
       },
       addSomeAnnotationsBy300(headAnnotations, annotationsData, idx, timer) {
         let newIdx = idx
-        console.log("hello")
         console.log(newIdx)
         while (newIdx < headAnnotations.length && newIdx - idx < 300) { // while still elements in list and we haven't gotten through 10 yet
           let item = headAnnotations[newIdx]
@@ -633,14 +639,11 @@ function embedNbApp () {
           } else if (comment.hasMyReplyRequests()) {
             notification = new NbNotification("Someone may have responded to your reply request", comment, true)
           }
-          console.log(notification)
           if (notification !== null) {
             this.notificationThreads.push(notification)
-            this.triggerPopupNotification(notification)
             comment.associatedNotification = notification 
-            console.log("setting associated notification after getting single thread")
+            this.triggerPopupNotification(notification)
           }
-          console.log(comment.associatedNotification)
           this.threads.push(comment)
         })
       },
@@ -666,6 +669,22 @@ function embedNbApp () {
           }) 
         }
       },
+      newNotification: function (comment) {
+        if (this.notificationThreads.length < 5) { // limit to 5 initial notifications
+          if (comment.isUnseen()) {
+            if (comment.hasUserTag(this.user.id)) {
+              return new NbNotification("You have an unseen thread that you're tagged in", comment, true)
+            }
+            if (comment.hasMyReplyRequests()) {
+              return new NbNotification("You have an unseen comment in a thread that you requested replies for", comment, true)
+            }
+            if (comment.hasInstructorPost()) {
+              return new NbNotification("You have an unseen thread with an instructor comment", comment, false)
+            }
+          }
+        }
+        return null
+      },
       getAllAnnotations: function (source, newActiveClass) {
         this.stillGatheringThreads = true
         const token = localStorage.getItem("nb.user");
@@ -683,6 +702,12 @@ function embedNbApp () {
               // Nb Comment
               let comment = new NbComment(item, res.data.annotationsData)
               this.threads.push(comment)
+
+              let newNotification = this.newNotification(comment) // Either get back a notification to add or null
+              if (newNotification !== null) {
+                this.notificationThreads.push(newNotification)
+                comment.associatedNotification = newNotification 
+              }
             }
             this.stillGatheringThreads = false
             let link = window.location.hash.match(/^#nb-comment-(.+$)/)
@@ -924,11 +949,11 @@ function embedNbApp () {
       },
       onNewRecentThread: function (thread) {
         // console.log(thread)
-        if (thread.author === this.user.id && thread.associatedNotification === null) { // if not this author and no notifications for this thread yet
+        if (thread.author !== this.user.id && thread.associatedNotification === null) { // if not this author and no notifications for this thread yet
           let notification = new NbNotification("A recent thread near you has been posted", thread, false)
           this.notificationThreads.push(notification)
           thread.associatedNotification = notification
-          console.log("setting associatedn notif on recent thread")
+          console.log("setting associated notif on recent thread")
         }
       },
       onToggleHighlights: function (show) {
@@ -967,9 +992,14 @@ function embedNbApp () {
           this.onSelectThread(this.filteredThreads[nextIdx])
         }
       },
-      onNotificationsMuted: function (muted) {
-        this.notificationsMuted = muted
-        console.log(this.notificationsMuted)
+      onToggleMuteNotifications: function () {
+        this.notificationsMuted = !this.notificationsMuted
+      },
+      onCloseDraggableNotifications: function () {
+        this.draggableNotificationsOpened = false;
+      },
+      onOpenDraggableNotifications: function () {
+        this.draggableNotificationsOpened = true;
       },
       onLogout: function () {
           localStorage.removeItem("nb.user")

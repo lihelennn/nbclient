@@ -24,7 +24,8 @@
         v-tooltip="'This comment has an associated notification'"
         class="icon-wrapper notification"
       >
-        N
+        <font-awesome-icon icon="bell" class="icon">
+        </font-awesome-icon>
       </div>
       <div v-else class="placeholder notification"></div>
     </div>

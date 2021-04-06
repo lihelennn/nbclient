@@ -1,14 +1,16 @@
 <template>
-  <div class="list-view">
-    <header class="card-header">
-      <p class="card-header-title">{{title}}<br>({{numberUnseen}} / {{totalCount}} unread)</p>
-      <span class="mute" v-tooltip="notificationsMuted ? 'Click to unmute notifications' : 'Click to mute notifications'"
-          @click="toggleMute">
-          <font-awesome-icon icon="bell-slash" class="icon" v-if="notificationsMuted">
-          </font-awesome-icon>
-          <font-awesome-icon icon="bell" class="icon" v-else>
-          </font-awesome-icon>
-      </span>
+  <div class="nb-notification-sidebar list-view">
+    <header class="card-header" id="draggable-notification-card-header">
+      <p class="card-header-title">{{title}}: ({{numberUnseen}} / {{totalCount}} unread)</p>
+      <div class="icons-left-parent">
+        <span class="icons-left" v-tooltip="notificationsMuted ? 'Click to unmute notifications' : 'Click to mute notifications'"
+            @click="toggleMute">
+            <font-awesome-icon icon="bell-slash" class="icon" v-if="notificationsMuted">
+            </font-awesome-icon>
+            <font-awesome-icon icon="bell" class="icon" v-else>
+            </font-awesome-icon>
+        </span>
+      </div>
     </header>
     <div class="notification-table">
       <notification-sidebar-row
@@ -23,6 +25,7 @@
           @unhover-thread="onUnhoverNotification">
       </notification-sidebar-row>
     </div>
+    <button class="notification-close-button" @click="$emit('close-draggable-notications')">X</button>
   </div>
 </template>
 
@@ -72,11 +75,9 @@ export default {
       type: Boolean,
       default: true
     },
-  },
-  data () {
-    return {
-      isCollapsed: true,
-      notificationsMuted: false,
+    notificationsMuted: {
+      type: Boolean,
+      default: false,
     }
   },
   computed: {
@@ -112,9 +113,7 @@ export default {
         this.$emit('unhover-thread', thread)
     },
     toggleMute: function () {
-      this.notificationsMuted = !this.notificationsMuted
-      console.log(this.notificationsMuted)
-      this.$emit('notifications-muted', this.notificationsMuted)
+      this.$emit('toggle-mute-notifications')
     }
   },
   components: {

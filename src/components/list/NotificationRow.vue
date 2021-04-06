@@ -7,8 +7,12 @@
       @mouseleave="onUnhoverNotification"
       @click="onClickNotification">
     <div class="flags">
-      <div class="icon-wrapper counter" :style="counterStyle">
-        {{ thread.countAllReplies() + 1 }}
+      <div v-if="thread.associatedNotification !== null" 
+        v-tooltip="'This comment has an associated notification'"
+        class="icon-wrapper notification"
+      >
+        <font-awesome-icon icon="bell" class="icon">
+        </font-awesome-icon>
       </div>
       <div v-if="thread.hasInstructorPost()" class="icon-wrapper instr">
         i

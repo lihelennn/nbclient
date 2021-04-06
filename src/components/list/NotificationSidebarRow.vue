@@ -102,6 +102,9 @@ export default {
       }
       return null
     },
+    timeTextStyle: function () {
+      return 'font-size: 12px;'
+    },
     title: function () {
         if (this.notification.title.length > 0) {
             return this.notification.title

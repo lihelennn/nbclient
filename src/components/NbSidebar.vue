@@ -47,7 +47,7 @@
         @unhover-thread="onUnhoverThread">
     </list-view>
     <notification-view
-        v-if="false"
+        v-if="showSyncFeatures"
         :notifications="notificationThreads"
         :total-count="notificationThreads.length"
         :thread-selected="threadsSelectedInPanes['notifications']"
@@ -55,11 +55,14 @@
         :threads-hovered="threadsHovered"
         :show-highlights="showHighlights"
         :still-gathering-threads="stillGatheringThreads"
+        :draggable-notifications-opened="draggableNotificationsOpened"
+        :notifications-muted="notificationsMuted"
         @toggle-highlights="onToggleHighlights"
         @select-notification="onSelectNotification"
         @hover-thread="onHoverThread"
         @unhover-thread="onUnhoverThread"
-        @notifications-muted="onNotificationsMuted"
+        @toggle-mute-notifications="onToggleMuteNotifications"
+        @open-draggable-notifications="onOpenDraggableNotifications"
     >
     </notification-view>
     <thread-view
@@ -180,6 +183,14 @@ export default {
       type: Boolean,
       default: true
     },
+    notificationsMuted: {
+      type: Boolean,
+      default: false
+    },
+    draggableNotificationsOpened: {
+      type: Boolean,
+      default: true,
+    }
   },
   data () {
     return {
@@ -446,8 +457,11 @@ export default {
     onNextComment: function () {
       this.$emit('next-comment')
     },
-    onNotificationsMuted: function (muted) {
-      this.$emit('notifications-muted', muted)
+    onToggleMuteNotifications: function () {
+      this.$emit('toggle-mute-notifications')
+    },
+    onOpenDraggableNotifications: function () {
+      this.$emit('open-draggable-notifications')
     }
   },
   components: {

@@ -14,10 +14,10 @@
         :height="box.height"
         :width="box.width">
         <animate
-          v-if="replyRequested && showSyncFeatures"
+          v-if="showReplyRequestAnimation"
           attributeType="XML"
           attributeName="fill"
-          values="#ffffff;#4a2270ad;#ffffff;#ffffff"
+          values="#ffffff;#4a2270D9;#ffffff;#ffffff"
           dur="3.0s"
           repeatCount="indefinite"/>
     </rect>
@@ -167,18 +167,29 @@ export default {
         return 'fill: rgb(1, 99, 255); opacity: 0.12;'
       }
 
-      if (this.thread.replyRequested && this.showSyncFeatures) {
-        return
-      }
       if (this.recent && this.showSyncFeatures) { // if recently shown, show a cyan outline color
         return 'stroke: rgb(0, 255, 255); stroke-width: 15'
       }
+      if (this.thread.hasReplyRequests() && this.showSyncFeatures) {
+        return
+      }
       if (this.thread.associatedNotification !== null) {
         console.log("NOTIFICATION!!!")
-        return 'fill: rgb(80, 54, 255); opacity: 0.3;'
+        return 'fill: rgb(80, 54, 255); opacity: 0.15;'
       }
 
       return null
+    },
+    showReplyRequestAnimation: function () {
+      if (this.thread) { // don't show animation if user is hovering or selected
+        if (this.thread === this.threadSelected || this.threadsHovered.includes(this.thread)){
+          return false
+        }
+        if (this.thread.hasReplyRequests() && this.showSyncFeatures) {
+          return true
+        }
+      }
+      return false 
     },
     bounds: function () {
       let bounds = {}
@@ -197,12 +208,6 @@ export default {
     },
     visible: function () {
       return this.showHighlights || (this.thread === this.threadSelected)
-    },
-    replyRequested: function() {
-      if (this.thread) {
-        return this.thread.hasReplyRequests()
-      }
-      return false
     },
   },
   methods: {

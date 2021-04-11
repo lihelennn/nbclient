@@ -7,25 +7,28 @@
       @mouseleave="onUnhoverNotification"
       @click="onClickNotification">
     <div class="flags">
-      <div class="icon-wrapper notification">Notification</div>
-      <div v-if="thread.hasInstructorPost()" class="icon-wrapper instr">
-        i
+      <div v-if="notification.type === 'instructor'" class="icon-wrapper instructor">
+        instructor comment
       </div>
-      <div v-else class="placeholder instr"></div>
-      <div v-if="thread.hasReplyRequests()" class="icon-wrapper question"
-          :style="iconStyle">
-        <font-awesome-icon icon="question">
-        </font-awesome-icon>
+      <div v-if="notification.type === 'question'" class="icon-wrapper reply-request">
+        reply request
       </div>
-      <div v-else class="placeholder question"></div>
+      <div v-if="notification.type === 'tag'" class="icon-wrapper tag">
+        you've been tagged
+      </div>
+      <div v-if="notification.type === 'recent'" class="icon-wrapper recent">
+        recent comment nearby
+      </div>
+      <div :style="timeTextStyle">
+        {{timeString}}
+      </div>
     </div>
     <br>
     <div :style="textStyle">
-      {{ title }}
+      {{title}}
     </div>
-    <div :style="timeTextStyle">
-      {{timeString}}
-    </div>
+
+
   </div>
 </template>
 
@@ -75,7 +78,7 @@ export default {
   },
   computed: {
     rowStyle: function () {
-      let inlineFlex = 'display: inline-flex; padding: 10px 2px 10px 2px; flex-wrap: wrap;';
+      let inlineFlex = 'display: flex; padding: 10px 2px 10px 2px; flex-wrap: wrap;';
       if (this.notificationSelected && this.notificationSelected === this.notification) {
         return inlineFlex + 'background-color: #b096ee; color: #fff'
       }
@@ -103,7 +106,7 @@ export default {
       return null
     },
     timeTextStyle: function () {
-      return 'font-size: 12px;'
+      return 'margin-left: 10px; font-size: 12px;'
     },
     title: function () {
         if (this.notification.title.length > 0) {

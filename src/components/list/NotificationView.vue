@@ -22,13 +22,6 @@
             <font-awesome-icon icon="envelope-open" class="icon">
             </font-awesome-icon>          
           </span>        
-          <span class="icons-left" v-tooltip="notificationsMuted ? 'Click to unmute notifications' : 'Click to mute notifications'"
-            @click="toggleMute">
-            <font-awesome-icon icon="bell-slash" class="icon" v-if="notificationsMuted">
-            </font-awesome-icon>
-            <font-awesome-icon icon="bell" class="icon" v-else>
-            </font-awesome-icon>
-          </span>
         </div>
       </div>
       <div class="notification-table">

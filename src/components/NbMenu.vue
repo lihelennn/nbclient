@@ -32,6 +32,6 @@ export default {
     },
     created: function () {
         this.activeClass = this.myClasses[0]
-    },
+    }
 }
 </script>

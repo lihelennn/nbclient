@@ -142,7 +142,6 @@ export default {
   },
   methods: {
     handleKeyUp: function(e) {
-      console.log("stop typing")
       window.clearTimeout(timer); // prevent errant multiple timeouts from being generated
       timer = window.setTimeout(() => {
         this.typing = false
@@ -151,7 +150,6 @@ export default {
     },
     handleKeyPress: function(e) {
       if (!this.typing) {
-        console.log("typing")
         this.typing = true
         this.$emit("thread-typing", true) // only emit if not currently typing
       }

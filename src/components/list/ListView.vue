@@ -45,6 +45,7 @@
             :thread="thread"
             :thread-selected="threadSelected"
             :threads-hovered="threadsHovered"
+            :show-sync-features="showSyncFeatures"
             @select-thread="onSelectThread"
             @hover-thread="$emit('hover-thread', thread)"
             @unhover-thread="$emit('unhover-thread', thread)">
@@ -114,6 +115,10 @@ export default {
       type: Boolean,
       default: true
     },
+    showSyncFeatures: {
+      type: Boolean,
+      default: false,
+    }
   },
   data () {
     return {

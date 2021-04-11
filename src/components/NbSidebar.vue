@@ -12,7 +12,12 @@
       :online-users="onlineUsers"
       :show-sync-features="showSyncFeatures"
       :nb-menu-showing="myClasses.length > 1"
-      @show-sync-features="onShowSyncFeatures">
+      :number-notifications-unseen="numberNotificationsUnseen"
+      :notifications-muted="notificationsMuted"
+      @show-sync-features="onShowSyncFeatures"
+      @toggle-mute-notifications="onToggleMuteNotifications"
+      @open-draggable-notifications="onOpenDraggableNotifications"
+    >
     </nb-online>
     <filter-view
         :me="user"
@@ -41,13 +46,14 @@
         :threads-hovered="threadsHovered"
         :show-highlights="showHighlights"
         :still-gathering-threads="stillGatheringThreads"
+        :show-sync-features="showSyncFeatures"
         @toggle-highlights="onToggleHighlights"
         @select-thread="onSelectThread"
         @hover-thread="onHoverThread"
         @unhover-thread="onUnhoverThread">
     </list-view>
     <notification-view
-        v-if="showSyncFeatures"
+        v-if="false"
         :notifications="notificationThreads"
         :total-count="notificationThreads.length"
         :thread-selected="threadsSelectedInPanes['notifications']"
@@ -96,8 +102,6 @@
         @thread-stop-typing="onThreadStopTyping"
         >
     </editor-view>
-    <!-- <nb-chat :user="user"></nb-chat> -->
-
   </div>
 </template>
 
@@ -114,7 +118,6 @@ import NotificationView from './list/NotificationView.vue'
 import ThreadView from './thread/ThreadView.vue'
 import EditorView from './editor/EditorView.vue'
 import NbMenu from './NbMenu.vue'
-import NbChat from './NbChat.vue'
 import NbOnline from './NbOnline.vue'
 
 export default {
@@ -181,7 +184,7 @@ export default {
     },
     showSyncFeatures: {
       type: Boolean,
-      default: true
+      default: false
     },
     notificationsMuted: {
       type: Boolean,
@@ -206,7 +209,7 @@ export default {
           anonymity: CommentAnonymity.IDENTIFIED,
           replyRequested: false
         },
-        isEmpty: true,
+        isEmpty: true
       }
     }
   },
@@ -221,6 +224,9 @@ export default {
     sortedHashtags: function () {
       return Object.values(this.hashtags).sort(compare('value'))
     },
+    numberNotificationsUnseen: function () {
+      return this.notificationThreads.filter(n => n.unseen).length
+    }
   },
   watch: {
     draftRange: function (val, oldVal) {
@@ -241,8 +247,6 @@ export default {
       }
     },
     threadSelected: function (val) {
-      console.log(val)
-      console.log(this.threadsSelectedInPanes['allThreads'])
       if (!val && this.replyToComment && this.editor.isEmpty) {
         // When thread is unselected, cancel reply if editor is empty.
         this.editor.visible = false
@@ -350,7 +354,6 @@ export default {
       this.$emit('editor-empty', isEmpty)
     },
     onSubmitSmallComment: function (data) {
-      console.log(data)
       let comment = new NbComment({
         id: null, // will be updated when submitAnnotation() is called
         range: null, // null if this is reply
@@ -402,7 +405,7 @@ export default {
         replyRequestCount: data.replyRequested ? 1 : 0,
         upvotedByMe: false,
         upvoteCount: 0,
-        seenByMe: true,
+        seenByMe: true
       })
       let source = this.sourceUrl.length > 0 ? this.sourceUrl : window.location.href.split('?')[0]
       comment.submitAnnotation(this.activeClass.id, source)
@@ -471,7 +474,6 @@ export default {
     ThreadView,
     EditorView,
     NbMenu,
-    NbChat,
     NotificationView,
     NbOnline,
   }

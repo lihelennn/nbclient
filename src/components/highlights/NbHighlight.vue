@@ -5,7 +5,11 @@
       :style="style"
       @click="$emit('select-thread',thread)"
       @mouseenter="onHover(true)"
-      @mouseleave="onHover(false)">
+      @mouseleave="onHover(false)"
+      v-tooltip="{
+        content: getTooltipContent(),
+      }"
+  >
     <rect
         v-for="(box, index) in bounds.boxes"
         :key="index"
@@ -14,11 +18,18 @@
         :height="box.height"
         :width="box.width">
         <animate
-          v-if="showReplyRequestAnimation"
+          v-if="showTypingActivityAnimation"
           attributeType="XML"
           attributeName="fill"
           values="#ffffff;#4a2270D9;#ffffff;#ffffff"
-          dur="3.0s"
+          dur="2.0s"
+          repeatCount="indefinite"/>
+        <animate
+          v-if="showRecentActivityAnimation"
+          attributeType="XML"
+          attributeName="fill"
+          values="#ffffff;#4a2270D9;#ffffff;#ffffff"
+          dur="5.0s"
           repeatCount="indefinite"/>
     </rect>
 
@@ -103,7 +114,7 @@ export default {
   },
   mounted () {
     if (this.thread) {
-      const totalTime = 15000
+      const totalTime = 18000
       let inView = true
       let rect = this.$el.getBoundingClientRect()
       let elTop = rect.top
@@ -119,7 +130,6 @@ export default {
           this.$emit('new-recent-thread', this.thread) // emit to display notification if in view of current user
         }
         setTimeout(() => {
-          console.log("changing back to recent is false")
           this.recent = false // set back to false after the time diff is over
         }, totalTime-timeDiff) // we still have 60 seconds - time diff left to display this recent annotation
       }
@@ -151,14 +161,8 @@ export default {
   },
   computed: {
     style: function () {
-      // if (this.classDraftBool) {
-      //   return 'stroke: rgb(255, 0, 255); stroke-width: 40; '
-      // }
       if (!this.thread) {
         return 'fill: rgb(231, 76, 60); opacity: 0.3;'
-      }
-      if (this.thread.usersTyping && this.thread.usersTyping.length > 0 && this.showSyncFeatures) { // if typing, show a pink outline color
-        return 'stroke: rgb(255, 0, 255); stroke-width: 25'
       }
       if (this.thread === this.threadSelected) {
         return 'fill: rgb(1, 99, 255); opacity: 0.3;'
@@ -166,15 +170,18 @@ export default {
       if (this.threadsHovered.includes(this.thread)) {
         return 'fill: rgb(1, 99, 255); opacity: 0.12;'
       }
-
-      if (this.recent && this.showSyncFeatures) { // if recently shown, show a cyan outline color
-        return 'stroke: rgb(0, 255, 255); stroke-width: 15'
-      }
-      if (this.thread.hasReplyRequests() && this.showSyncFeatures) {
+      if (this.showTypingActivityAnimation) { // if typing, show a pink outline color
+        // return 'stroke: rgb(255, 0, 255); stroke-width: 25'
         return
       }
-      if (this.thread.associatedNotification !== null) {
-        console.log("NOTIFICATION!!!")
+      if (this.showRecentActivityAnimation) { // if recently shown, show a cyan outline color
+        // return 'stroke: rgb(0, 255, 255); stroke-width: 15'
+        return
+      }
+      if (this.replyRequestThread) {
+        return 'stroke: rgb(255, 0, 255); stroke-width: 8'
+      }
+      if (this.notificationThread) {
         return 'fill: rgb(80, 54, 255); opacity: 0.15;'
       }
 
@@ -190,6 +197,24 @@ export default {
         }
       }
       return false 
+    },
+    showRecentActivityAnimation: function () {
+      if (this.thread && ( (this.thread === this.threadSelected) || this.threadsHovered.includes(this.thread))) { // if typing or hover, don't animate
+        return false
+      }
+      return this.thread && this.recent && this.showSyncFeatures
+    },
+    showTypingActivityAnimation: function () {
+      if (this.thread && ( (this.thread === this.threadSelected) || this.threadsHovered.includes(this.thread))) { // if typing or hover, don't animate
+        return false
+      }
+      return this.thread && this.thread.usersTyping && this.thread.usersTyping.length > 0 && this.showSyncFeatures
+    },
+    replyRequestThread: function () {
+      return this.thread && this.thread.hasReplyRequests() && this.showSyncFeatures
+    },
+    notificationThread: function () {
+      return this.thread && this.thread.associatedNotification !== null && this.showSyncFeatures
     },
     bounds: function () {
       let bounds = {}
@@ -208,11 +233,21 @@ export default {
     },
     visible: function () {
       return this.showHighlights || (this.thread === this.threadSelected)
-    },
+    }
   },
   methods: {
     onHover: function (state) {
       this.$emit(state ? 'hover-thread' : 'unhover-thread', this.thread)
+    },
+    getTooltipContent: function () {
+      if (!this.thread || !this.showSyncFeatures) {
+        return ''
+      }
+      if (this.replyRequestThread) {
+        return this.thread.authorName + ' wants a reply request for this thread'
+      } else if (this.notificationThread) {
+        return this.thread.associatedNotification.title
+      }
     }
   }
 }

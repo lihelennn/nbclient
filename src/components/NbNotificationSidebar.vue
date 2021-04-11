@@ -5,8 +5,8 @@
       :x="-500"
       :y="250"
       :handles="['tl', 'tr', 'br', 'bl']"
-      :min-height="350"
-      :min-width="275"
+      :min-height="300"
+      :min-width="325"
       :parent="false">
       <notification-sidebar-view
           :notifications="notificationThreads"
@@ -85,36 +85,7 @@ export default {
       default: false
     }
   },
-  computed: {
-    totalLabel: function () {
-      if (this.totalCount === 1) {
-        return '1 total notification'
-      } else {
-        return `${this.notificationThreads.length} total notifications`
-      }
-    },
-    title: function () {
-      return 'Notifications'
-    },
-    numberUnseen: function () {
-        return this.notificationThreads.filter(n => n.unseen).length
-    },
-    style: function () {
-      if (this.isCollapsed) {
-        return 'width: 20px;'
-      }
-    }
-  },
   methods: {
-    onCollapseNotifications: function() {
-      this.isCollapsed = !this.isCollapsed
-      if (this.isCollapsed) {
-        document.body.setAttribute('style', 'position: initial !important; margin: 0 395px 20px 0 !important;')
-      } else {
-        document.body.setAttribute('style', 'position: initial !important; margin: 0 395px 0 190px !important;')
-      }
-
-    },
     onToggleHighlights: function (show) {
       this.$emit('toggle-highlights', show)
     },

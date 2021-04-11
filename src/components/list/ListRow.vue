@@ -20,7 +20,7 @@
         </font-awesome-icon>
       </div>
       <div v-else class="placeholder question"></div>
-      <div v-if="thread.associatedNotification !== null" 
+      <div v-if="this.showSyncFeatures && thread.associatedNotification !== null" 
         v-tooltip="'This comment has an associated notification'"
         class="icon-wrapper notification"
       >
@@ -32,7 +32,7 @@
     <span :style="textStyle">
       {{ thread.text }}
     </span>
-    <div class="typing">
+    <div v-if="showSyncFeatures" class="typing">
       <span>
         <avatar
         v-for="user in thread.usersTyping" 
@@ -82,6 +82,10 @@ export default {
     threadsHovered: {
       type: Array,
       default: () => []
+    },
+    showSyncFeatures: {
+      type: Boolean,
+      default: false
     }
   },
   computed: {

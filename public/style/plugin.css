@@ -377,6 +377,9 @@
   justify-content: space-between;
   margin-right: 5px;
 }
+#nb-app .nb-sidebar .list-view .list-row #notification-row-flags{ /*only for notification row style*/
+  justify-content: flex-start;
+}
 #nb-app .nb-sidebar .list-view .list-row .flags .icon-wrapper {
   display: flex;
   align-items: center;
@@ -499,8 +502,17 @@
   border-radius: 3px;
 }
 .icon-wrapper.recent {
-  background-color: #009999;
-  color: #fff;
+  /* background-color: #009999; */
+  /* color: #fff; */
+  font-size: 14px;
+  font-family: 'Verdana', 'Geneva', sans-serif;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 3px;
+}
+.icon-wrapper.reply {
+  /* background-color: #009999; */
+  /* color: #fff; */
   font-size: 14px;
   font-family: 'Verdana', 'Geneva', sans-serif;
   height: 16px;

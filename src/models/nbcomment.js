@@ -600,6 +600,19 @@ class NbComment {
     for (let child of this.children) {
       let res = child.getReplyRequestResponsePost(userID)
       if (res !== null) {
+        return res 
+      }
+    }
+    return null 
+  }
+  
+  hasAuthorReplies (authorId) {
+    if (!this.seenByMe && this.parent !== null && this.parent.author === authorId) {
+      return this
+    }
+    for (let child of this.children) {
+      let res = child.hasAuthorReplies(authorId) 
+      if (res != null) {
         return res
       }
     }

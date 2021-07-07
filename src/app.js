@@ -605,673 +605,682 @@ function embedNbApp() {
             if (token) {
                 const decoded = VueJwtDecode.decode(token)
                 this.user = decoded.user
-            }
+                Array.from(document.getElementsByTagName("script")).forEach(elm => {
+                    if (elm.src.includes("https://nb2.csail.mit.edu")){
+                        elm.remove()
+                    }
+                })
 
-            // remove hypothesis
-            const hypothesisSidebar = document.getElementsByTagName('hypothesis-sidebar')
-            const hypothesisAdder = document.getElementsByTagName('hypothesis-adder')
-            hypothesisSidebar && hypothesisSidebar[0] && hypothesisSidebar[0].remove()
-            hypothesisAdder && hypothesisAdder[0] && hypothesisAdder[0].remove()
-
-            socket.on('connections', (data) => {
-                if (data.classId === this.activeClass.id && data.sectionId === this.currentSectionId) {
+                // remove hypothesis
+                const hypothesisSidebar = document.getElementsByTagName('hypothesis-sidebar')
+                const hypothesisAdder = document.getElementsByTagName('hypothesis-adder')
+                hypothesisSidebar && hypothesisSidebar[0] && hypothesisSidebar[0].remove()
+                hypothesisAdder && hypothesisAdder[0] && hypothesisAdder[0].remove()
+                
+                socket.on('connections', (data) => {
+                  if (data.classId === this.activeClass.id && data.sectionId === this.currentSectionId) {
+                    console.log(data.connections)
                     let onlineUsersSet = new Set(data.connections)
                     this.onlineUsers = [...onlineUsersSet]
-                }
-            })
-
-            socket.on("new_thread", (data) => {
-                let userIdsSet = new Set(data.userIds)
-                if (data.authorId !== this.user.id && userIdsSet.has(this.user.id)) { // find if we are one of the target audiences w/ visibility + section permissions for this new_thread if current user, we already added new thread to their list
+                  }
+                })
+                socket.on("new_thread", (data) => {
+                  let userIdsSet = new Set(data.userIds)
+                  if (data.authorId !== this.user.id && userIdsSet.has(this.user.id)) { // find if we are one of the target audiences w/ visibility + section permissions for this new_thread if current user, we already added new thread to their list
                     let classId = data.classId
                     if (this.activeClass) { // originally had a check here to see if currently signed in, then don't retrieve again
-                        if (this.activeClass.id == classId && this.sourceURL === data.sourceUrl) {
-                            this.getSingleThread(data.sourceUrl, classId, data.threadId, data.authorId, data.taggedUsers, true) // data contains info about the thread and if the new thread as posted by an instructor
-                            console.log("new thread: gathered new annotations")
-                        }
+                      if (this.activeClass.id == classId && this.sourceURL === data.sourceUrl) {
+                        this.getSingleThread(data.sourceUrl, classId, data.threadId, data.authorId, data.taggedUsers, true) // data contains info about the thread and if the new thread as posted by an instructor
+                        console.log("new thread: gathered new annotations")
+                      }
                     }
-                }
-            })
-
-            socket.on('thread-typing', (data) => {
-                let thread = this.threads.find(x => x.id === data.threadId)
-                if (thread !== undefined) {
+                  }
+                })
+                socket.on('thread-typing', (data) => {
+                  let thread = this.threads.find(x => x.id === data.threadId)
+                  if (thread !== undefined) {
                     thread.usersTyping = data.usersTyping
-                }
-            })
-
-            socket.on('new_reply', (data) => {
-                if (data.authorId !== this.user.id) { // if current user, we already added new reply to their list
+                  }
+                });
+                socket.on('new_reply', (data) => {
+                  if (data.authorId !== this.user.id) { // if current user, we already added new reply to their list
                     let classId = data.classId
                     if (this.activeClass) { // originally had a check here to see if currently signed in, then don't retrieve again
-                        if (this.activeClass.id == classId && this.sourceURL === data.sourceUrl) {
-                            this.threads = this.threads.filter(x => x.id !== data.headAnnotationId) // filter out the thread
-                            this.getSingleThread(data.sourceUrl, classId, data.threadId, data.authorId, data.taggedUsers, false, data.newAnnotationId, data.headAnnotationId) // data contains info about the thread and if the new thread as posted by an instructor
-                        }
+                      if (this.activeClass.id == classId && this.sourceURL === data.sourceUrl) {
+                        this.threads = this.threads.filter(x => x.id !== data.headAnnotationId) // filter out the thread
+                        this.getSingleThread(data.sourceUrl, classId, data.threadId, data.authorId, data.taggedUsers, false, data.newAnnotationId, data.headAnnotationId) // data contains info about the thread and if the new thread as posted by an instructor
+                      }
+                    }
+                  }
+                })
+            }
+    },
+    methods: {
+      dragging: function (isDragging) {
+        this.isDragging = isDragging
+      },
+      setMousePosition: function (position) {
+          this.mousePosition = position
+      },
+      mouseUp: function (e) {
+          if (this.isDragging) {
+              e.preventDefault()
+              this.isDragging = false
+          }
+      },
+      mouseMove: function (e) {
+          if (!this.isDragging) return
+          e.preventDefault()
+          const dx = this.mousePosition - e.x
+          this.mousePosition = e.x
+          let width = parseInt(this.sidebarWidth + dx)
+          width = width < 300 ? 300 : width > 800 ? 800 : width
+          this.sidebarWidth = width
+      },
+      setUser: function (user) {
+        this.user = user
+      },
+      onUserLeft: function() {
+        socket.emit('left', {username: this.user.username, classId: this.activeClass.id, sectionId: this.currentSectionId})
+      },
+      getSingleThread: function (sourceUrl, classId, threadId, authorId, taggedUsers, isNewThread, replyAnnotationId=null, oldHeadAnnotationId=null) { // get single thread and add it to the list
+        const token = localStorage.getItem("nb.user");
+        const config = { headers: { Authorization: 'Bearer ' + token }, params: { source_url: sourceUrl, class_id: classId, thread_id:  threadId} }
+        axios.get('/api/annotations/specific_thread',  config)
+        .then(res => {
+          let item = res.data.headAnnotation
+          try {
+            item.range = deserializeNbRange(item.range)
+          } catch (e) {
+            console.warn(`Could not deserialize range for ${item.id}`)
+          }
+          if (oldHeadAnnotationId) { // if there exists an old thread we need to remove, then filter it out before adding a new one
+            this.threads = this.threads.filter(x => x.id !== oldHeadAnnotationId) // filter out the thread
+          }
+          // Nb Comment
+          let comment = new NbComment(item, res.data.annotationsData)
+
+          // get the specific annotation that was recently posted
+          let specificAnnotation = null 
+          if (replyAnnotationId !== null) {
+            specificAnnotation = comment.getChildComment(replyAnnotationId) 
+          } 
+
+          // set any type of notification
+          let notification = null
+          if (specificAnnotation.parent.author === this.user.id) { // if this new comment is a reply to the user
+            notification = new NbNotification(comment, "reply", false, specificAnnotation)
+          } else if (this.user.role === 'instructor' && isNewThread) { // instructors will get all new threads and posts
+            notification = new NbNotification(comment, "recent", false, specificAnnotation)
+          }
+
+          // if (taggedUsers.includes(this.user.id)) { // user tagged in post
+          //   notification = new NbNotification(comment, "tag", true, specificAnnotation)
+          // } else if (this.users[authorId].role === "instructor") { // instructor comment
+          //   if (isNewThread) {
+          //     notification = new NbNotification(comment, "instructor", false, specificAnnotation)
+          //   } else {
+          //     if (comment.getAllAuthors().has(this.user.id)) {
+          //       notification = new NbNotification(comment, "instructor", false, specificAnnotation)
+          //     }
+          //   }
+          // } else if ((isNewThread && comment.hasReplyRequests()) || (specificAnnotation !== null && specificAnnotation.hasReplyRequests())) { // new thread with reply request or the reply had a reply request
+          //   notification = new NbNotification(comment, "question", false, specificAnnotation)
+          // } else if (specificAnnotation !== null && specificAnnotation.parent.hasMyReplyRequests()) { // reply to an parent comment where user made a reply request
+          //   notification = new NbNotification(comment, "question", true, specificAnnotation)
+          // } else if (this.user.role === 'instructor' && isNewThread) { // instructors will get all new threads and posts
+          //   notification = new NbNotification(comment, "recent", false, specificAnnotation)
+          // }
+          if (notification !== null) {
+            this.notificationThreads.push(notification)
+            comment.associatedNotification = notification 
+            this.triggerPopupNotification(notification)
+          }
+          this.notificationThreads.forEach((n, i) => {
+            if (n.comment.id === comment.id) {
+              this.notificationThreads[i].comment = comment // replace comment for existing notifications referring to old version of comment
+            }
+          })
+          this.threads.push(comment)
+        })
+      },
+      triggerPopupNotification: function (notification) {
+        if (this.showSyncFeatures && notification.triggerPopup && !this.notificationsMuted) {
+          let relevantComment = notification.specificAnnotation ? notification.specificAnnotation : notification.comment 
+          let text = relevantComment.text.substring(0, 20)
+          if (relevantComment.text.length > 20) {
+            text += "..."
+          }
+          this.$swal({
+            title: '',
+            text: notification.readableType + ": " + text,
+            type: 'success',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Bring me there!',
+            toast: true,
+            position: 'top-start',
+            timer: 6000,
+          }).then((result) => {
+            if (result.value) {
+              this.swalClicked = true 
+              notification.setIsUnseen(false)
+              this.onSelectNotification(notification)
+            }
+          }) 
+        }
+      },
+      playNotificationSound: function (sound = new Audio("http://soundbible.com/mp3/Air Plane Ding-SoundBible.com-496729130.mp3")) {
+        if (this.showSyncFeatures && this.playSoundNotification && !this.notificationsMuted) {
+            sound.play();
+            this.playSoundNotification = false
+            setTimeout(() => {
+                this.playSoundNotification = true // set back to allowing sound notifications after 30 seconds
+            }, 30000)
+        }
+      },
+      newNotification: function (comment) {
+        if (comment.hasAuthorReplies(this.user.id)) { // if thread has unseen comments that reply to this author
+          return new NbNotification(comment, "reply", false, specificAnnotation)
+        }
+        return null
+        // if (comment.isUnseen()) {
+        //   if (comment.getAllAuthors().has(this.user.id)) {
+        //     return new NbNotification(comment, "reply", false, specificAnnotation)
+        //   }
+          // if (comment.hasUserTag(this.user.id)) {
+          //   return new NbNotification(comment, "tag", true)
+          // }
+          // if (comment.hasMyReplyRequests()) {
+          //   return new NbNotification(comment, "question", true)
+          // }
+          // if (comment.hasInstructorPost()) {
+          //   return new NbNotification(comment, "instructor", false)
+          // }
+        // }
+      },
+      getAllAnnotations: async function (source, newActiveClass) {
+        this.stillGatheringThreads = true
+        const token = localStorage.getItem("nb.user");
+        const config = { headers: { Authorization: 'Bearer ' + token }, params: { url: source, class: newActiveClass.id, sectioned: !this.currentConfigs.isIgnoreSectionsInClass } }
+
+        axios.get('/api/annotations/new_annotation', config)
+            .then(async res => {
+                this.threads = []
+
+                for (const item of res.data.headAnnotations) {
+                    try {
+                        item.range = deserializeNbRange(item.range)
+                    } catch (e) {
+                        console.warn(`Could not deserialize range for ${item.id}`)
+                        continue
+                    }
+                    // Nb Comment
+                    let comment = new NbComment(item, res.data.annotationsData)
+                    this.threads.push(comment)
+                    let newNotification = this.newNotification(comment) // Either get back a notification to add or null
+                    if (newNotification !== null) {
+                        this.notificationThreads.push(newNotification)
+                        comment.associatedNotification = newNotification
                     }
                 }
-            })
-        },
-        methods: {
-            dragging: function (isDragging) {
-                this.isDragging = isDragging
-            },
-            setMousePosition: function (position) {
-                this.mousePosition = position
-            },
-            mouseUp: function (e) {
-                if (this.isDragging) {
-                    e.preventDefault()
-                    this.isDragging = false
-                }
-            },
-            mouseMove: function (e) {
-                if (!this.isDragging) return
-                e.preventDefault()
-                const dx = this.mousePosition - e.x
-                this.mousePosition = e.x
-                let width = parseInt(this.sidebarWidth + dx)
-                width = width < 300 ? 300 : width > 800 ? 800 : width
-                this.sidebarWidth = width
-            },
-            setUser: function (user) {
-                this.user = user
-            },
-            onUserLeft: function () {
-                socket.emit('left', { username: this.user.username, classId: this.activeClass.id, sectionId: this.currentSectionId })
-            },
-            getSingleThread: function (sourceUrl, classId, threadId, authorId, taggedUsers, isNewThread, replyAnnotationId = null, oldHeadAnnotationId = null) { // get single thread and add it to the list
-                const token = localStorage.getItem("nb.user");
-                const config = { headers: { Authorization: 'Bearer ' + token }, params: { source_url: sourceUrl, class_id: classId, thread_id: threadId } }
-                axios.get('/api/annotations/specific_thread', config)
-                    .then(res => {
-                        let item = res.data.headAnnotation
-                        try {
-                            item.range = deserializeNbRange(item.range)
-                        } catch (e) {
-                            console.warn(`Could not deserialize range for ${item.id}`)
-                        }
-                        if (oldHeadAnnotationId) { // if there exists an old thread we need to remove, then filter it out before adding a new one
-                            this.threads = this.threads.filter(x => x.id !== oldHeadAnnotationId) // filter out the thread
-                        }
-                        // Nb Comment
-                        let comment = new NbComment(item, res.data.annotationsData)
 
-                        // get the specific annotation that was recently posted
-                        let specificAnnotation = null
-                        if (replyAnnotationId !== null) {
-                            specificAnnotation = comment.getChildComment(replyAnnotationId)
-                        }
+                if (this.isExpSpotlight && this.expSpotlight.group === 'treatment') {
+                    if (!this.expSpotlight.assignment.annotations) {
+                        console.log('need to assign annotations')
+                        const highQualityAnnotations = []
+                        const otherAnnotations = []
+                        const pickedAnnotationsIds = []
+                        const blockPos = ['ABOVE', 'BELLOW', 'LEFT', 'RIGHT']
 
-                        // set any type of notification
-                        let notification = null
-                        if (taggedUsers.includes(this.user.id)) { // user tagged in post
-                            notification = new NbNotification(comment, "tag", true, specificAnnotation)
-                        } else if (this.users[authorId].role === "instructor") { // instructor comment
-                            if (isNewThread) {
-                                notification = new NbNotification(comment, "instructor", false, specificAnnotation)
+                        this.threads.forEach(t => {
+                            if (t.spotlight) {
+                                highQualityAnnotations.push(t.id)
                             } else {
-                                if (comment.getAllAuthors().has(this.user.id)) {
-                                    notification = new NbNotification(comment, "instructor", false, specificAnnotation)
-                                }
-                            }
-                        } else if ((isNewThread && comment.hasReplyRequests()) || (specificAnnotation !== null && specificAnnotation.hasReplyRequests())) { // new thread with reply request or the reply had a reply request
-                            notification = new NbNotification(comment, "question", false, specificAnnotation)
-                        } else if (specificAnnotation !== null && specificAnnotation.parent.hasMyReplyRequests()) { // reply to an parent comment where user made a reply request
-                            notification = new NbNotification(comment, "question", true, specificAnnotation)
-                        } else if (this.user.role === 'instructor' && isNewThread) { // instructors will get all new threads and posts
-                            notification = new NbNotification(comment, "recent", false, specificAnnotation)
-                        }
-                        if (notification !== null) {
-                            this.notificationThreads.push(notification)
-                            comment.associatedNotification = notification
-                            this.triggerPopupNotification(notification)
-                            this.playNotificationSound()
-                        }
-                        this.notificationThreads.forEach((n, i) => {
-                            if (n.comment.id === comment.id) {
-                                this.notificationThreads[i].comment = comment // replace comment for existing notifications referring to old version of comment
+                                otherAnnotations.push(t.id)
                             }
                         })
 
-                        this.threads.push(comment)
-                    })
-            },
-            triggerPopupNotification: function (notification) {
-                if (this.showSyncFeatures && notification.triggerPopup && !this.notificationsMuted) {
-                    let relevantComment = notification.specificAnnotation ? notification.specificAnnotation : notification.comment
-                    let text = relevantComment.text.substring(0, 20)
-                    if (relevantComment.text.length > 20) {
-                        text += "..."
-                    }
-                    this.$swal({
-                        title: '',
-                        text: notification.readableType + ": " + text,
-                        type: 'success',
-                        showCancelButton: true,
-                        confirmButtonColor: '#3085d6',
-                        cancelButtonColor: '#d33',
-                        confirmButtonText: 'Bring me there!',
-                        toast: true,
-                        position: 'top-start',
-                        timer: 6000,
-                    }).then((result) => {
-                        if (result.value) {
-                            this.swalClicked = true
-                            this.onSelectNotification(notification)
-                        }
-                    })
-                }
-            },
-            playNotificationSound: function (sound = new Audio("http://soundbible.com/mp3/Air Plane Ding-SoundBible.com-496729130.mp3")) {
-                if (this.showSyncFeatures && this.playSoundNotification && !this.notificationsMuted) {
-                    sound.play();
-                    this.playSoundNotification = false
-                    setTimeout(() => {
-                        this.playSoundNotification = true // set back to allowing sound notifications after 30 seconds
-                    }, 30000)
-                }
-            },
-            newNotification: function (comment) {
-                if (this.notificationThreads.length < 5) { // limit to 5 initial notifications
-                    let taggedComment = comment.getUserTagPost(this.user.id)
-                    if (taggedComment !== null) {
-                        return new NbNotification(comment, "tag", true, taggedComment)
-                    }
+                        const highQualityAnnotations2 = JSON.parse(JSON.stringify(highQualityAnnotations))
 
-                    let replyRequestResponseComment = comment.getReplyRequestResponsePost(this.user.id)
-                    if (replyRequestResponseComment !== null) {
-                        return new NbNotification(comment, "question", true, replyRequestResponseComment)
-                    }
-
-                    let instructorResponseComment = comment.getInstructorPost()
-                    if (instructorResponseComment !== null) {
-                        return new NbNotification(comment, "instructor", false, instructorResponseComment)
-                    }
-                }
-                return null
-            },
-            getAllAnnotations: async function (source, newActiveClass) {
-                this.stillGatheringThreads = true
-                const token = localStorage.getItem("nb.user");
-                const config = { headers: { Authorization: 'Bearer ' + token }, params: { url: source, class: newActiveClass.id, sectioned: !this.currentConfigs.isIgnoreSectionsInClass } }
-
-                axios.get('/api/annotations/new_annotation', config)
-                    .then(async res => {
-                        this.threads = []
-
-                        for (const item of res.data.headAnnotations) {
-                            try {
-                                item.range = deserializeNbRange(item.range)
-                            } catch (e) {
-                                console.warn(`Could not deserialize range for ${item.id}`)
-                                continue
-                            }
-                            // Nb Comment
-                            let comment = new NbComment(item, res.data.annotationsData)
-                            this.threads.push(comment)
-                            let newNotification = this.newNotification(comment) // Either get back a notification to add or null
-                            if (newNotification !== null) {
-                                this.notificationThreads.push(newNotification)
-                                comment.associatedNotification = newNotification
+                        while (pickedAnnotationsIds.length < this.expSpotlight.assignment.quantity / 2
+                            && highQualityAnnotations.length > 0) {
+                            let index = Math.floor(Math.random() * highQualityAnnotations.length)
+                            const picked = highQualityAnnotations[index]
+                            if (!pickedAnnotationsIds.includes(picked)) {
+                                pickedAnnotationsIds.push(picked)
+                                highQualityAnnotations.splice(index, 1)
                             }
                         }
 
-                        if (this.isExpSpotlight && this.expSpotlight.group === 'treatment') {
-                            if (!this.expSpotlight.assignment.annotations) {
-                                console.log('need to assign annotations')
-                                const highQualityAnnotations = []
-                                const otherAnnotations = []
-                                const pickedAnnotationsIds = []
-                                const blockPos = ['ABOVE', 'BELLOW', 'LEFT', 'RIGHT']
-
-                                this.threads.forEach(t => {
-                                    if (t.spotlight) {
-                                        highQualityAnnotations.push(t.id)
-                                    } else {
-                                        otherAnnotations.push(t.id)
-                                    }
-                                })
-
-                                const highQualityAnnotations2 = JSON.parse(JSON.stringify(highQualityAnnotations))
-
-                                while (pickedAnnotationsIds.length < this.expSpotlight.assignment.quantity / 2
-                                    && highQualityAnnotations.length > 0) {
-                                    let index = Math.floor(Math.random() * highQualityAnnotations.length)
-                                    const picked = highQualityAnnotations[index]
-                                    if (!pickedAnnotationsIds.includes(picked)) {
-                                        pickedAnnotationsIds.push(picked)
-                                        highQualityAnnotations.splice(index, 1)
-                                    }
-                                }
-
-                                while (pickedAnnotationsIds.length < this.expSpotlight.assignment.quantity
-                                    && otherAnnotations.length > 0) {
-                                    let index = Math.floor(Math.random() * otherAnnotations.length)
-                                    const picked = otherAnnotations[index]
-                                    if (!pickedAnnotationsIds.includes(picked)) {
-                                        pickedAnnotationsIds.push(picked)
-                                        otherAnnotations.splice(index, 1)
-                                    }
-                                }
-
-                                const pickedAnnotations = pickedAnnotationsIds.map(id => {
-                                    return {
-                                        id: id,
-                                        type: this.expSpotlight.assignment.type == 'BLOCK' ? blockPos[Math.floor(Math.random() * blockPos.length)] : this.expSpotlight.assignment.type,
-                                        highQuality: highQualityAnnotations2.includes(id)
-                                    }
-                                })
-
-                                const assignmentReqconfig = { headers: { Authorization: 'Bearer ' + token }, params: { assignment: this.expSpotlight.assignment.id } }
-                                await axios.post('/api/exp/spotlight/source/assignment/annotations', pickedAnnotations, assignmentReqconfig)
-                                this.expSpotlight.assignment.annotations = pickedAnnotations
-                            } else {
-                                this.expSpotlight.assignment.annotations = JSON.parse(this.expSpotlight.assignment.annotations)
+                        while (pickedAnnotationsIds.length < this.expSpotlight.assignment.quantity
+                            && otherAnnotations.length > 0) {
+                            let index = Math.floor(Math.random() * otherAnnotations.length)
+                            const picked = otherAnnotations[index]
+                            if (!pickedAnnotationsIds.includes(picked)) {
+                                pickedAnnotationsIds.push(picked)
+                                otherAnnotations.splice(index, 1)
                             }
-
-                            const assignmentAnnotationsIds = this.expSpotlight.assignment.annotations.map(a => a.id)
-                            console.log('Has assign annotations')
-
-                            this.threads.forEach(t => {
-                                if (assignmentAnnotationsIds.includes(t.id)) {
-                                    for (const annotation of this.expSpotlight.assignment.annotations) {
-                                        if (annotation.id === t.id) {
-                                            t.spotlight = {
-                                                type: annotation.type,
-                                                highQuality: annotation.highQuality
-                                            }
-                                            break
-                                        }
-                                    }
-                                } else {
-                                    t.spotlight = null
-                                }
-                            })
-                        } else if (this.isExpSpotlight && this.expSpotlight.group === 'control') {
-                            this.threads.forEach(t => {
-                                t.spotlight = null
-                            })
                         }
 
-                        this.stillGatheringThreads = false
+                        const pickedAnnotations = pickedAnnotationsIds.map(id => {
+                            return {
+                                id: id,
+                                type: this.expSpotlight.assignment.type == 'BLOCK' ? blockPos[Math.floor(Math.random() * blockPos.length)] : this.expSpotlight.assignment.type,
+                                highQuality: highQualityAnnotations2.includes(id)
+                            }
+                        })
 
-                        let link = window.location.hash.match(/^#nb-comment-(.+$)/)
-                        if (link) {
-                            let id = link[1]
-                            this.threadSelected = this.threads.find(x => x.id === id)
+                        const assignmentReqconfig = { headers: { Authorization: 'Bearer ' + token }, params: { assignment: this.expSpotlight.assignment.id } }
+                        await axios.post('/api/exp/spotlight/source/assignment/annotations', pickedAnnotations, assignmentReqconfig)
+                        this.expSpotlight.assignment.annotations = pickedAnnotations
+                    } else {
+                        this.expSpotlight.assignment.annotations = JSON.parse(this.expSpotlight.assignment.annotations)
+                    }
+
+                    const assignmentAnnotationsIds = this.expSpotlight.assignment.annotations.map(a => a.id)
+                    console.log('Has assign annotations')
+
+                    this.threads.forEach(t => {
+                        if (assignmentAnnotationsIds.includes(t.id)) {
+                            for (const annotation of this.expSpotlight.assignment.annotations) {
+                                if (annotation.id === t.id) {
+                                    t.spotlight = {
+                                        type: annotation.type,
+                                        highQuality: annotation.highQuality
+                                    }
+                                    break
+                                }
+                            }
+                        } else {
+                            t.spotlight = null
                         }
                     })
-            },
-            draftThread: function (range) {
-                if (this.user) { // only if selection was after user log in
-                    this.draftRange = createNbRange(range)
-                }
-            },
-            onDeleteThread: function (thread) {
-                if (this.threadSelected === thread) { this.threadSelected = null }
-                let idx = this.threads.indexOf(thread)
-                if (idx >= 0) { this.threads.splice(idx, 1) }
-                if (thread.id) {
-                    const token = localStorage.getItem("nb.user");
-                    const headers = { headers: { Authorization: 'Bearer ' + token } }
-                    axios.delete(`/api/annotations/annotation/${thread.id}`, headers)
-                }
-            },
-            onNewThread: function (thread) {
-                this.threads.push(thread)
-                this.draftRange = null
-            },
-            onCancelDraft: function () {
-                this.draftRange = null
-            },
-            onEditorEmpty: function (isEmpty) {
-                this.isEditorEmpty = isEmpty
-            },
-            onSearchOption: function (option) {
-                this.filter.searchOption = option
-                this.onSearchUpdate()
-            },
-            onSearchText: function (text) {
-                this.filter.searchText = text
-                this.onSearchUpdate()
-            },
-            onSearchUpdate: function () {
-                if (this.threadSelected && this.filter.searchText.length > 0) {
-                    if (this.filter.searchOption === 'text' && !this.threadSelected.hasText(this.filter.searchText)) {
-                        this.threadSelected = null // reset selection if filtered
-                    }
-                    if (this.filter.searchOption === 'author' && !this.threadSelected.hasAuthor(this.filter.searchText)) {
-                        this.threadSelected = null // reset selection if filtered
-                    }
-                }
-            },
-            onFilterBookmarks: function (filter) {
-                if (this.threadSelected && filter && !this.threadSelected.hasBookmarks()) {
-                    this.threadSelected = null // reset selection if filtered
-                }
-                this.filter.bookmarks = filter
-            },
-            onFilterHashtags: function (hashtags) {
-                if (this.threadSelected && hashtags.length > 0) {
-                    let filtered = true
-                    for (let hashtag of hashtags) {
-                        if (this.threadSelected.hasHashtag(hashtag)) {
-                            filtered = false
-                            break
-                        }
-                    }
-                    if (filtered) {
-                        this.threadSelected = null // reset selection if filtered
-                    }
-                }
-                this.filter.hashtags = hashtags
-            },
-            onFilterUserTags: function (filters) {
-                if (this.threadSelected && filters.includes('me') && !this.threadSelected.hasUserTag(this.user.id)) {
-                    this.threadSelected = null // reset selection if filtered
-                }
-                this.filter.userTags = filters
-            },
-            onFilterComments: function (filters) {
-                if (this.threadSelected && filters.length > 0) {
-                    let filtered = true
-                    if (filters.includes('instructor') && this.threadSelected.hasInstructorPost()) {
-                        filtered = false
-                    }
-                    if (filters.includes('me') && this.threadSelected.hasUserPost(this.user.id)) {
-                        filtered = false
-                    }
-                    if (filtered) {
-                        this.threadSelected = null // reset selection if filtered
-                    }
-                }
-                this.filter.comments = filters
-            },
-            onFilterReplyReqs: function (filters) {
-                if (this.threadSelected && filters.length > 0) {
-                    let filtered = true
-                    if (filters.includes('anyone') && this.threadSelected.hasReplyRequests()) {
-                        filtered = false
-                    }
-                    if (filters.includes('me') && this.threadSelected.hasMyReplyRequests()) {
-                        filtered = false
-                    }
-                    if (filtered) {
-                        this.threadSelected = null // reset selection if filtered
-                    }
-                }
-                this.filter.replyReqs = filters
-            },
-            onFilterUpvotes: function (filters) {
-                if (this.threadSelected && filters.length > 0) {
-                    let filtered = true
-                    if (filters.includes('anyone') && this.threadSelected.hasUpvotes()) {
-                        filtered = false
-                    }
-                    if (filters.includes('me') && this.threadSelected.hasMyUpvotes()) {
-                        filtered = false
-                    }
-                    if (filtered) {
-                        this.threadSelected = null // reset selection if filtered
-                    }
-                }
-                this.filter.upvotes = filters
-            },
-            onMinWords: function (min) {
-                if (this.threadSelected && this.threadSelected.wordCount < min) {
-                    this.threadSelected = null // reset selection if filtered
-                }
-                this.filter.minWords = min
-            },
-            onMaxWords: function (max) {
-                if (this.threadSelected && this.threadSelected.wordCount > max) {
-                    this.threadSelected = null // reset selection if filtered
-                }
-                this.filter.maxWords = max
-            },
-            onMinHashtags: function (min) {
-                if (this.threadSelected && this.threadSelected.hashtags.length < min) {
-                    this.threadSelected = null // reset selection if filtered
-                }
-                this.filter.minHashtags = min
-            },
-            onMaxHashtags: function (max) {
-                if (this.threadSelected && this.threadSelected.hashtags.length > max) {
-                    this.threadSelected = null // reset selection if filtered
-                }
-                this.filter.maxHashtags = max
-            },
-            onMinReplies: function (min) {
-                if (this.threadSelected && this.threadSelected.countAllReplies() < min) {
-                    this.threadSelected = null // reset selection if filtered
-                }
-                this.filter.minReplies = min
-            },
-            onMinReplyReqs: function (min) {
-                if (this.threadSelected && this.threadSelected.countAllReplyReqs() < min) {
-                    this.threadSelected = null // reset selection if filtered
-                }
-                this.filter.minReplyReqs = min
-            },
-            onMinUpvotes: function (min) {
-                if (this.threadSelected && this.threadSelected.countAllUpvotes() < min) {
-                    this.threadSelected = null // reset selection if filtered
-                }
-                this.filter.minUpvotes = min
-            },
-            onSelectThread: function (thread, threadViewInitiator = 'NONE') {
-                this.threadViewInitiator = threadViewInitiator
-                // console.log('threadViewInitiator: ' + this.threadViewInitiator)
-                if (this.threadSelected) {
-                    socket.emit('thread-stop-typing', { threadId: this.threadSelected.id, username: this.user.username }) // selecting new thread so stop typing on this thread
-                }
-                if (thread.associatedNotification !== null) {
-                    thread.associatedNotification.setIsUnseen(false)
-                }
-                this.threadSelected = thread
-                thread.markSeenAll()
-            },
-            onSelectNotification: function (notification) {
-                this.notificationSelected = notification
-                notification.setIsUnseen(false)
-                this.onSelectThread(notification.comment)
-            },
-            onUnselectThread: function (thread) {
-                if (this.isDragging) return
-
-                this.threadViewInitiator = 'NONE'
-                //console.log('threadViewInitiator: ' + this.threadViewInitiator)
-                if (!this.isInnotationHover) {
-                    this.threadSelected = null
-                }
-                if (this.draftRange && this.isEditorEmpty) {
-                    this.onCancelDraft()
-                }
-                if (this.threadSelected) {
-                    socket.emit('thread-stop-typing', { threadId: this.threadSelected.id, username: this.user.username }) // selecting no thread so stop typing
-                }
-                if (this.swalClicked) {
-                    this.swalClicked = false // don't unselect if this was a popup notification click
-                } else { // otherwise, it was a valid unselect thread click
-                    if (!this.isInnotationHover) {
-                        this.threadSelected = null
-                    }
-                    if (this.draftRange && this.isEditorEmpty) {
-                        this.onCancelDraft()
-                    }
+                } else if (this.isExpSpotlight && this.expSpotlight.group === 'control') {
+                    this.threads.forEach(t => {
+                        t.spotlight = null
+                    })
                 }
 
-                this.threadViewInitiator = 'NONE'
-                // console.log('threadViewInitiator: ' + this.threadViewInitiator)
+                this.stillGatheringThreads = false
 
-            },
-            onHoverThread: function (thread) {
-                //console.log('onHoverThread in app')
-                if (this.isDragging) return
+                let link = window.location.hash.match(/^#nb-comment-(.+$)/)
+                if (link) {
+                    let id = link[1]
+                    this.threadSelected = this.threads.find(x => x.id === id)
+                }
+            })
+    },
+          draftThread: function (range) {
+              if (this.user) { // only if selection was after user log in
+                  this.draftRange = createNbRange(range)
+              }
+          },
+          onDeleteThread: function (thread) {
+              if (this.threadSelected === thread) { this.threadSelected = null }
+              let idx = this.threads.indexOf(thread)
+              if (idx >= 0) { this.threads.splice(idx, 1) }
+              if (thread.id) {
+                  const token = localStorage.getItem("nb.user");
+                  const headers = { headers: { Authorization: 'Bearer ' + token } }
+                  axios.delete(`/api/annotations/annotation/${thread.id}`, headers)
+              }
+          },
+          onNewThread: function (thread) {
+              this.threads.push(thread)
+              this.draftRange = null
+          },
+          onCancelDraft: function () {
+              this.draftRange = null
+          },
+          onEditorEmpty: function (isEmpty) {
+              this.isEditorEmpty = isEmpty
+          },
+          onSearchOption: function (option) {
+              this.filter.searchOption = option
+              this.onSearchUpdate()
+          },
+          onSearchText: function (text) {
+              this.filter.searchText = text
+              this.onSearchUpdate()
+          },
+          onSearchUpdate: function () {
+              if (this.threadSelected && this.filter.searchText.length > 0) {
+                  if (this.filter.searchOption === 'text' && !this.threadSelected.hasText(this.filter.searchText)) {
+                      this.threadSelected = null // reset selection if filtered
+                  }
+                  if (this.filter.searchOption === 'author' && !this.threadSelected.hasAuthor(this.filter.searchText)) {
+                      this.threadSelected = null // reset selection if filtered
+                  }
+              }
+          },
+          onFilterBookmarks: function (filter) {
+              if (this.threadSelected && filter && !this.threadSelected.hasBookmarks()) {
+                  this.threadSelected = null // reset selection if filtered
+              }
+              this.filter.bookmarks = filter
+          },
+          onFilterHashtags: function (hashtags) {
+              if (this.threadSelected && hashtags.length > 0) {
+                  let filtered = true
+                  for (let hashtag of hashtags) {
+                      if (this.threadSelected.hasHashtag(hashtag)) {
+                          filtered = false
+                          break
+                      }
+                  }
+                  if (filtered) {
+                      this.threadSelected = null // reset selection if filtered
+                  }
+              }
+              this.filter.hashtags = hashtags
+          },
+          onFilterUserTags: function (filters) {
+              if (this.threadSelected && filters.includes('me') && !this.threadSelected.hasUserTag(this.user.id)) {
+                  this.threadSelected = null // reset selection if filtered
+              }
+              this.filter.userTags = filters
+          },
+          onFilterComments: function (filters) {
+              if (this.threadSelected && filters.length > 0) {
+                  let filtered = true
+                  if (filters.includes('instructor') && this.threadSelected.hasInstructorPost()) {
+                      filtered = false
+                  }
+                  if (filters.includes('me') && this.threadSelected.hasUserPost(this.user.id)) {
+                      filtered = false
+                  }
+                  if (filtered) {
+                      this.threadSelected = null // reset selection if filtered
+                  }
+              }
+              this.filter.comments = filters
+          },
+          onFilterReplyReqs: function (filters) {
+              if (this.threadSelected && filters.length > 0) {
+                  let filtered = true
+                  if (filters.includes('anyone') && this.threadSelected.hasReplyRequests()) {
+                      filtered = false
+                  }
+                  if (filters.includes('me') && this.threadSelected.hasMyReplyRequests()) {
+                      filtered = false
+                  }
+                  if (filtered) {
+                      this.threadSelected = null // reset selection if filtered
+                  }
+              }
+              this.filter.replyReqs = filters
+          },
+          onFilterUpvotes: function (filters) {
+              if (this.threadSelected && filters.length > 0) {
+                  let filtered = true
+                  if (filters.includes('anyone') && this.threadSelected.hasUpvotes()) {
+                      filtered = false
+                  }
+                  if (filters.includes('me') && this.threadSelected.hasMyUpvotes()) {
+                      filtered = false
+                  }
+                  if (filtered) {
+                      this.threadSelected = null // reset selection if filtered
+                  }
+              }
+              this.filter.upvotes = filters
+          },
+          onMinWords: function (min) {
+              if (this.threadSelected && this.threadSelected.wordCount < min) {
+                  this.threadSelected = null // reset selection if filtered
+              }
+              this.filter.minWords = min
+          },
+          onMaxWords: function (max) {
+              if (this.threadSelected && this.threadSelected.wordCount > max) {
+                  this.threadSelected = null // reset selection if filtered
+              }
+              this.filter.maxWords = max
+          },
+          onMinHashtags: function (min) {
+              if (this.threadSelected && this.threadSelected.hashtags.length < min) {
+                  this.threadSelected = null // reset selection if filtered
+              }
+              this.filter.minHashtags = min
+          },
+          onMaxHashtags: function (max) {
+              if (this.threadSelected && this.threadSelected.hashtags.length > max) {
+                  this.threadSelected = null // reset selection if filtered
+              }
+              this.filter.maxHashtags = max
+          },
+          onMinReplies: function (min) {
+              if (this.threadSelected && this.threadSelected.countAllReplies() < min) {
+                  this.threadSelected = null // reset selection if filtered
+              }
+              this.filter.minReplies = min
+          },
+          onMinReplyReqs: function (min) {
+              if (this.threadSelected && this.threadSelected.countAllReplyReqs() < min) {
+                  this.threadSelected = null // reset selection if filtered
+              }
+              this.filter.minReplyReqs = min
+          },
+          onMinUpvotes: function (min) {
+              if (this.threadSelected && this.threadSelected.countAllUpvotes() < min) {
+                  this.threadSelected = null // reset selection if filtered
+              }
+              this.filter.minUpvotes = min
+          },
+          onSelectThread: function (thread, threadViewInitiator = 'NONE') {
+              this.threadViewInitiator = threadViewInitiator
+              // console.log('threadViewInitiator: ' + this.threadViewInitiator)
+              if (this.threadSelected) {
+                  socket.emit('thread-stop-typing', { threadId: this.threadSelected.id, username: this.user.username }) // selecting new thread so stop typing on this thread
+              }
+              if (thread.associatedNotification !== null) {
+                  thread.associatedNotification.setIsUnseen(false)
+              }
+              this.threadSelected = thread
+              thread.markSeenAll()
+          },
+          onSelectNotification: function (notification) {
+              this.notificationSelected = notification
+              notification.setIsUnseen(false)
+              this.onSelectThread(notification.comment)
+          },
+          onUnselectThread: function (thread) {
+              if (this.isDragging) return
 
-                if (!this.threadsHovered.includes(thread)) {
-                    this.threadsHovered.push(thread)
-                }
-            },
-            onHoverInnotation: function (thread) {
-                //console.log('onHoverInnotation in app')
-                if (this.isDragging) return
+              this.threadViewInitiator = 'NONE'
+              //console.log('threadViewInitiator: ' + this.threadViewInitiator)
+              if (!this.isInnotationHover) {
+                  this.threadSelected = null
+              }
+              if (this.draftRange && this.isEditorEmpty) {
+                  this.onCancelDraft()
+              }
+              if (this.threadSelected) {
+                  socket.emit('thread-stop-typing', { threadId: this.threadSelected.id, username: this.user.username }) // selecting no thread so stop typing
+              }
+              if (this.swalClicked) {
+                  this.swalClicked = false // don't unselect if this was a popup notification click
+              } else { // otherwise, it was a valid unselect thread click
+                  if (!this.isInnotationHover) {
+                      this.threadSelected = null
+                  }
+                  if (this.draftRange && this.isEditorEmpty) {
+                      this.onCancelDraft()
+                  }
+              }
 
-                this.isInnotationHover = true
-                if (!this.threadsHovered.includes(thread)) {
-                    this.threadsHovered.push(thread)
-                }
-            },
-            onUnhoverThread: function (thread) {
-                if (!this.isInnotationHover) {
-                    //console.log('onUnhoverThread in app')
-                    let idx = this.threadsHovered.indexOf(thread)
-                    if (idx >= 0) this.threadsHovered.splice(idx, 1)
-                }
-            },
-            onUnhoverInnotation: function (thread) {
-                // console.log('onUnhoverInnotation in app')
-                this.isInnotationHover = false
-                let idx = this.threadsHovered.indexOf(thread)
-                if (idx >= 0) this.threadsHovered.splice(idx, 1)
-            },
-            onNewRecentThread: function (thread) {
-                let mostRecentThread = thread.getMostRecentPost() // get the most recent thread to see if we should notify about it
-                if (mostRecentThread.author !== this.user.id && thread.associatedNotification === null) { // if not this author and no notifications for this thread yet
-                    let notification = new NbNotification(thread, "recent", false, mostRecentThread) // associated annotation is the most recent one
-                    this.notificationThreads.push(notification)
-                    thread.associatedNotification = notification
-                }
-            },
-            onToggleHighlights: function (show) {
-                this.showHighlights = show
-            },
-            handleRedrawHighlights: function () {
-                // if (this.canRedrawHighlightsTimeout) {
-                //     clearTimeout(this.canRedrawHighlightsTimeout)
-                // }
+              this.threadViewInitiator = 'NONE'
+              // console.log('threadViewInitiator: ' + this.threadViewInitiator)
 
-                // this.canRedrawHighlights = false
-                this.redrawHighlightsKey = Date.now()
-                // this.redrawHighlightsOffset = window.pageYOffset
-                // this.canRedrawHighlightsTimeout = setTimeout(() => {
-                //     this.canRedrawHighlights = true
-                // }, 5000)
-            },
-            onSwitchClass: function (newClass) {
-                this.activeClass = newClass
-            },
-            onShowSyncFeatures: function (showSyncFeatures) {
-                this.showSyncFeatures = showSyncFeatures
-            },
-            onThreadTyping: function (threadId) {
-                if (threadId) {
-                    socket.emit('thread-typing', { threadId: threadId, username: this.user.username })
-                }
-            },
-            onThreadStopTyping: function (threadId) {
-                if (threadId) {
-                    socket.emit('thread-stop-typing', { threadId: threadId, username: this.user.username })
-                }
-            },
-            onPrevComment: function () {
-                let idx = this.filteredThreads.findIndex(x => x.id === this.threadSelected.id)
-                let prevIdx = idx - 1
-                if (prevIdx >= 0 && prevIdx < this.filteredThreads.length) {
-                    this.onSelectThread(this.filteredThreads[prevIdx])
-                }
-            },
-            onNextComment: function () {
-                let idx = this.filteredThreads.findIndex(x => x.id === this.threadSelected.id)
-                let nextIdx = idx + 1
-                if (nextIdx >= 0 && nextIdx < this.filteredThreads.length) {
-                    this.onSelectThread(this.filteredThreads[nextIdx])
-                }
-            },
-            onToggleMuteNotifications: function () {
-                this.notificationsMuted = !this.notificationsMuted
-            },
-            onCloseDraggableNotifications: function () {
-                this.draggableNotificationsOpened = false;
-            },
-            onOpenDraggableNotifications: function () {
-                this.draggableNotificationsOpened = true;
-            },
-            onOpenSidebarNotifications: function () {
-                this.sidebarNotificationsOpened = true;
-            },
-            onSessionEnd: async function () {
-                if (this.activeClass.id) {
-                    this.onLogExpSpotlight('SESSION_END', 'NONE', 'NONE', false)
+          },
+          onHoverThread: function (thread) {
+              //console.log('onHoverThread in app')
+              if (this.isDragging) return
 
-                    const token = localStorage.getItem("nb.user");
-                    const config = { headers: { Authorization: 'Bearer ' + token }, params: { url: this.sourceURL } }
-                    await axios.post(`/api/spotlights/log/session/end`, {
-                        action: 'SESSION_END',
-                        type: 'NONE',
-                        class_id: this.activeClass.id,
-                        role: this.user.role.toUpperCase()
-                    }, config)
-                }
-            },
-            onLogout: async function () {
-                await this.onSessionEnd()
-                this.onUserLeft()
-                localStorage.removeItem("nb.user")
-                this.user = null
-                this.myClasses = []
-                this.activeClass = {}
-                this.users = {}
-                this.hashtags = {}
-                this.threads = []
-                this.threadSelected = null
-                this.threadsHovered = []
-                this.draftRange = null
-                this.isEditorEmpty = true
-                this.filter = {
-                    searchOption: 'text',
-                    searchText: '',
-                    bookmarks: false,
-                    hashtags: [],
-                    userTags: [],
-                    comments: [],
-                    replyReqs: [],
-                    upvotes: [],
-                    minWords: 0,
-                    maxWords: null,
-                    minHashtags: 0,
-                    maxHashtags: null,
-                    minReplies: 0,
-                    minReplyReqs: 0,
-                    minUpvotes: 0
-                }
-                this.showHighlights = true
-            },
-            onLogExpSpotlight: async function (event = 'NONE', initiator = 'NONE', type = 'NONE', highQuality = false, annotationId = null, annotation_replies_count = 0) {
-                if (this.isExpSpotlight) {
-                    console.log(`onLogExpSpotlight \nevent: ${event} \ninitiator: ${initiator} \ntype: ${type} \nhighQuality: ${highQuality} \nannotationId: ${annotationId} \nannotation_replies_count: ${annotation_replies_count}`)
-                    const token = localStorage.getItem("nb.user");
-                    const config = { headers: { Authorization: 'Bearer ' + token }, params: { url: this.sourceURL } }
+              if (!this.threadsHovered.includes(thread)) {
+                  this.threadsHovered.push(thread)
+              }
+          },
+          onHoverInnotation: function (thread) {
+              //console.log('onHoverInnotation in app')
+              if (this.isDragging) return
 
-                    axios.post(`/api/exp/spotlight/log`, {
-                        class_id: this.activeClass.id,
-                        annotation_id: annotationId,
-                        event: event,
-                        type: type,
-                        order: this.expSpotlightOrder,
-                        initiator: initiator,
-                        highQuality: highQuality,
-                        source_annotations_count: this.threads.length,
-                        annotation_replies_count: annotation_replies_count,
-                        exp_group: this.expSpotlight.group.toUpperCase(),
-                        exp_type: this.expSpotlight.assignment ? this.expSpotlight.assignment.type : 'NONE',
-                        exp_quantity: this.expSpotlight.assignment ? this.expSpotlight.assignment.quantity : 0,
-                    }, config)
+              this.isInnotationHover = true
+              if (!this.threadsHovered.includes(thread)) {
+                  this.threadsHovered.push(thread)
+              }
+          },
+          onUnhoverThread: function (thread) {
+              if (!this.isInnotationHover) {
+                  //console.log('onUnhoverThread in app')
+                  let idx = this.threadsHovered.indexOf(thread)
+                  if (idx >= 0) this.threadsHovered.splice(idx, 1)
+              }
+          },
+          onUnhoverInnotation: function (thread) {
+              // console.log('onUnhoverInnotation in app')
+              this.isInnotationHover = false
+              let idx = this.threadsHovered.indexOf(thread)
+              if (idx >= 0) this.threadsHovered.splice(idx, 1)
+          },
+          onNewRecentThread: function (thread) {
+              let mostRecentThread = thread.getMostRecentPost() // get the most recent thread to see if we should notify about it
+              if (mostRecentThread.author !== this.user.id && thread.associatedNotification === null) { // if not this author and no notifications for this thread yet
+                  let notification = new NbNotification(thread, "recent", false, mostRecentThread) // associated annotation is the most recent one
+                  this.notificationThreads.push(notification)
+                  thread.associatedNotification = notification
+              }
+          },
+          onToggleHighlights: function (show) {
+              this.showHighlights = show
+          },
+          handleRedrawHighlights: function () {
+              // if (this.canRedrawHighlightsTimeout) {
+              //     clearTimeout(this.canRedrawHighlightsTimeout)
+              // }
 
-                    this.expSpotlightOrder = this.expSpotlightOrder + 1
-                }
-            }
+              // this.canRedrawHighlights = false
+              this.redrawHighlightsKey = Date.now()
+              // this.redrawHighlightsOffset = window.pageYOffset
+              // this.canRedrawHighlightsTimeout = setTimeout(() => {
+              //     this.canRedrawHighlights = true
+              // }, 5000)
+          },
+          onSwitchClass: function (newClass) {
+              this.activeClass = newClass
+          },
+          onShowSyncFeatures: function (showSyncFeatures) {
+              this.showSyncFeatures = showSyncFeatures
+          },
+          onThreadTyping: function (threadId) {
+              if (threadId) {
+                  socket.emit('thread-typing', { threadId: threadId, username: this.user.username })
+              }
+          },
+          onThreadStopTyping: function (threadId) {
+              if (threadId) {
+                  socket.emit('thread-stop-typing', { threadId: threadId, username: this.user.username })
+              }
+          },
+          onPrevComment: function () {
+              let idx = this.filteredThreads.findIndex(x => x.id === this.threadSelected.id)
+              let prevIdx = idx - 1
+              if (prevIdx >= 0 && prevIdx < this.filteredThreads.length) {
+                  this.onSelectThread(this.filteredThreads[prevIdx])
+              }
+          },
+          onNextComment: function () {
+              let idx = this.filteredThreads.findIndex(x => x.id === this.threadSelected.id)
+              let nextIdx = idx + 1
+              if (nextIdx >= 0 && nextIdx < this.filteredThreads.length) {
+                  this.onSelectThread(this.filteredThreads[nextIdx])
+              }
+          },
+          onToggleMuteNotifications: function () {
+              this.notificationsMuted = !this.notificationsMuted
+          },
+          onCloseDraggableNotifications: function () {
+              this.draggableNotificationsOpened = false;
+          },
+          onOpenDraggableNotifications: function () {
+              this.draggableNotificationsOpened = true;
+          },
+          onOpenSidebarNotifications: function () {
+              this.sidebarNotificationsOpened = true;
+          },
+          onSessionEnd: async function () {
+              if (this.activeClass.id) {
+                  this.onLogExpSpotlight('SESSION_END', 'NONE', 'NONE', false)
+
+                  const token = localStorage.getItem("nb.user");
+                  const config = { headers: { Authorization: 'Bearer ' + token }, params: { url: this.sourceURL } }
+                  await axios.post(`/api/spotlights/log/session/end`, {
+                      action: 'SESSION_END',
+                      type: 'NONE',
+                      class_id: this.activeClass.id,
+                      role: this.user.role.toUpperCase()
+                  }, config)
+              }
+          },
+          onLogout: async function () {
+              await this.onSessionEnd()
+              this.onUserLeft()
+              localStorage.removeItem("nb.user")
+              this.user = null
+              this.myClasses = []
+              this.activeClass = {}
+              this.users = {}
+              this.hashtags = {}
+              this.threads = []
+              this.threadSelected = null
+              this.threadsHovered = []
+              this.draftRange = null
+              this.isEditorEmpty = true
+              this.filter = {
+                  searchOption: 'text',
+                  searchText: '',
+                  bookmarks: false,
+                  hashtags: [],
+                  userTags: [],
+                  comments: [],
+                  replyReqs: [],
+                  upvotes: [],
+                  minWords: 0,
+                  maxWords: null,
+                  minHashtags: 0,
+                  maxHashtags: null,
+                  minReplies: 0,
+                  minReplyReqs: 0,
+                  minUpvotes: 0
+              }
+              this.showHighlights = true
+          },
+          onLogExpSpotlight: async function (event = 'NONE', initiator = 'NONE', type = 'NONE', highQuality = false, annotationId = null, annotation_replies_count = 0) {
+              if (this.isExpSpotlight) {
+                  console.log(`onLogExpSpotlight \nevent: ${event} \ninitiator: ${initiator} \ntype: ${type} \nhighQuality: ${highQuality} \nannotationId: ${annotationId} \nannotation_replies_count: ${annotation_replies_count}`)
+                  const token = localStorage.getItem("nb.user");
+                  const config = { headers: { Authorization: 'Bearer ' + token }, params: { url: this.sourceURL } }
+
+                  axios.post(`/api/exp/spotlight/log`, {
+                      class_id: this.activeClass.id,
+                      annotation_id: annotationId,
+                      event: event,
+                      type: type,
+                      order: this.expSpotlightOrder,
+                      initiator: initiator,
+                      highQuality: highQuality,
+                      source_annotations_count: this.threads.length,
+                      annotation_replies_count: annotation_replies_count,
+                      exp_group: this.expSpotlight.group.toUpperCase(),
+                      exp_type: this.expSpotlight.assignment ? this.expSpotlight.assignment.type : 'NONE',
+                      exp_quantity: this.expSpotlight.assignment ? this.expSpotlight.assignment.quantity : 0,
+                  }, config)
+
+                  this.expSpotlightOrder = this.expSpotlightOrder + 1
+              }
+          }
         },
         components: {
             NbInnotations,
